@@ -24,7 +24,10 @@
 #define IDR_PLUGIN_DLL 101
 
 static const wchar_t* kAppTitle   = L"InternetGuard - Veyon plugin setup / Installazione plugin Veyon";
-static const wchar_t* kPluginName = L"internet-guard.dll";
+#ifndef PLUGIN_NAME
+#  define PLUGIN_NAME L"internet-guard.dll"
+#endif
+static const wchar_t* kPluginName = PLUGIN_NAME;
 
 // ---------------------------------------------------------------------------
 // Small helpers
