@@ -1,0 +1,22 @@
+# Build output (binaries are published as GitHub Release assets, not committed)
+/build/
+/build-*/
+*.o
+*.obj
+
+# Installer build artifacts
+/installer/internet-guard.dll
+/installer/install-internet-guard.exe
+/installer/*.o
+
+# Internal build/assignment notes (not for publication)
+/veyon_*_build_instructions.txt
+
+# Local tooling config (not for publication)
+/.claude/
+
+# Editor / OS
+.vscode/
+.idea/
+*.user
+Thumbs.db

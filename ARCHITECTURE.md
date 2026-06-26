@@ -1,0 +1,116 @@
+# Architecture notes
+
+Technical/architecture summary for contributors. User-facing documentation
+(Italian) lives in `README.md`.
+
+## What this is
+
+A [Veyon](https://veyon.io/) teacher-side plugin that adds a "Block / Allow Internet" toggle to the Veyon Master UI. When the teacher activates the feature, the Veyon Server running on each student machine adds Windows Firewall rules (via `netsh advfirewall`) that block outbound internet traffic while keeping the local subnet (LAN) reachable. Deactivating removes those rules.
+
+## Version compatibility (important)
+
+The Veyon plugin interfaces used here — `PluginInterface`, `FeatureProviderInterface` (`controlFeature`, `handleFeatureMessage`, `sendFeatureMessage`), `Feature` (9-arg constructor + `Flag` enum), `FeatureMessage` — are **stable across every Veyon release from 4.7.5 through 4.10.x**. The source needs **no per-version `#if` branches for the API itself**. The only axis of variation is the **Qt major version** the target Veyon was built with:
+
+- Veyon 4.7.5 – 4.9.x → Qt 5 (default, `WITH_QT6=OFF`) → output: `internet-guard-qt5.dll`
+- Veyon 4.10.x → Qt 6 (`-DWITH_QT6=ON`) → output: `internet-guard-qt6.dll`
+
+All version handling is centralized in `VeyonCompat.h` (single include point for the Veyon API + `VEYON_TARGET_VERSION_*` macros and `VEYON_VERSION_AT_LEAST()`).
+
+### API change in Veyon 4.10.0: `FeatureMessage::command()`
+
+In Veyon ≤4.9.x, `FeatureMessage::command()` returned `int`.  
+In Veyon ≥4.10.0, it returns `FeatureMessage::Command` (a class enum), with a
+template overload `command<YourEnum>()` to decode into a user-defined enum type.
+
+`VeyonCompat.h` provides the `VEYON_DECODE_COMMAND(msg, EnumType)` macro to
+abstract this difference; `InternetGuardPlugin.cpp` uses it exclusively so the
+same source compiles against both API versions.
+
+## Build
+
+**Prerequisites**
+
+| Dependency | Qt 5 build | Qt 6 build |
+|---|---|---|
+| CMake | ≥ 3.16 | ≥ 3.16 |
+| Qt (Core, Widgets, Svg, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64` | Qt 6 via MSYS2 (`mingw-w64-x86_64-qt6-*`) |
+| MinGW toolchain | `C:/Qt/Tools/mingw730_64` (g++ 7.3) | MSYS2 MinGW64 GCC |
+| Veyon source tree | `../veyon-src/core/src` (4.7.5–4.9.x) | `../veyon-src/core/src` (4.10.x) |
+| Veyon import library | `libveyon-core.dll.a` (in repo root) | `libveyon-core-qt6.dll.a` (in repo root) |
+| C++ standard | C++14 | C++14 (GCC 16 accepts C++17) |
+
+**ABI note (Qt 5):** build with the **same compiler/Qt that the installed Veyon uses**. The official Windows Veyon 4.7.5–4.9.x builds use MinGW g++ 7.3 + Qt 5.12; using a different MinGW (e.g. MSYS2 GCC) can produce a DLL that fails to load.
+
+**ABI note (Qt 6 / GCC 16):** GCC 16 emits both a local vtable and `__imp__ZTV` references for `dllimport` base classes (`FeatureProviderInterface`, `PluginInterface`). Both definitions are identical (same header), so the linker flag `-Wl,--allow-multiple-definition` is added for WIN32 builds to silently resolve the conflict. This is harmless and expected with this toolchain combination.
+
+**Configure and build (Qt 5 / Veyon 4.7.5–4.9.x)**
+
+```powershell
+$env:PATH = "C:\Qt\Tools\mingw730_64\bin;$env:PATH"
+cmake -S . -B build-qt5 -G "MinGW Makefiles" `
+  -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw730_64/bin/g++.exe" `
+  -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/mingw730_64/bin/mingw32-make.exe" `
+  -DVEYON_TARGET_VERSION=4.7.5 `
+  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.9-src"
+cmake --build build-qt5
+```
+
+Output: `build-qt5/internet-guard-qt5.dll`.
+
+**Configure and build (Qt 6 / Veyon 4.10.x — verified with MSYS2 + Qt 6.11.1)**
+
+```powershell
+$env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+cmake -S . -B build-qt6 -G Ninja `
+  -DWITH_QT6=ON `
+  -DCMAKE_PREFIX_PATH="C:/msys64/mingw64" `
+  -DVEYON_TARGET_VERSION=4.10.4 `
+  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.10-src"
+cmake --build build-qt6
+```
+
+Output: `build-qt6/internet-guard-qt6.dll`.
+
+The repo ships `libveyon-core-qt6.dll.a` (generated from Veyon 4.10.4's
+`veyon-core.dll` via `objdump` + `dlltool`) and `libveyon-core-qt6.def`
+(the full export list). They are selected automatically when `WITH_QT6=ON`.
+
+For the CMake flags (`WITH_QT6`, `VEYON_TARGET_VERSION`, `VEYON_SOURCE_DIR`, `VEYON_CORE_LIBRARY`), see `README.md` §5–§6.
+
+## Architecture
+
+The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-guard-qt6.dll`) built from:
+
+- **`InternetGuardPlugin.h/.cpp`** — the entire plugin logic. Inherits from both `FeatureProviderInterface` and `PluginInterface`. Two roles depending on which side of Veyon loads it:
+  - **Master side** (`controlFeature`): on `Operation::Start`/`Stop` sends a `BlockInternetCommand` / `AllowInternetCommand` `FeatureMessage` to the selected computers via `sendFeatureMessage`.
+  - **Server side** (`handleFeatureMessage`): receives the message and calls `blockInternet()` / `allowInternet()`. These run `netsh` via `runNetshBatch()`, which launches all commands as parallel `QProcess` instances and then waits — total wall time ≈ max(individual) instead of sum. The destructor calls `allowInternet()` so stale rules are never left on unload.
+
+- **`VeyonCompat.h`** — single point of contact with the Veyon API + version macros + the `VEYON_DECODE_COMMAND` compatibility macro (see Version compatibility above).
+
+- **`resources.qrc`** — embeds `network-offline.svg` as the toolbar icon (`:/internet-guard/network-offline.svg`). Qt Svg must be available for QIcon to render it.
+
+- **`installer/`** — standalone native Win32 installer (`installer.cpp`, `installer.rc`, `installer.manifest`, `build-installer.ps1`). Statically linked, no Qt dependency; embeds the plugin DLL as an RCDATA resource. It suggests the Veyon folder (registry/Program Files), lets the user pick it, copies the DLL into `…\plugins\`, reports permission errors, and self-elevates (UAC `runas`) on access-denied. Build with `pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5.dll` (or `-qt6` variant).
+
+### Firewall rule names
+
+All rules use the prefix `VeyonIG_` so they can be reliably deleted. `blockInternet()` always calls `allowInternet()` first to avoid duplicate accumulation.
+
+| Rule constant | Port / Protocol | Purpose |
+|---|---|---|
+| `VeyonIG_BlockHTTP` | TCP 80 | HTTP |
+| `VeyonIG_BlockHTTPS` | TCP 443 | HTTPS |
+| `VeyonIG_BlockDNS_UDP` | UDP 53 | DNS |
+| `VeyonIG_BlockDNS_TCP` | TCP 53 | DNS |
+| `VeyonIG_BlockQUIC` | UDP 443 | QUIC / HTTP-3 |
+| `VeyonIG_BlockDoT_TCP` | TCP 853 | DNS over TLS |
+| `VeyonIG_BlockDoT_UDP` | UDP 853 | DNS over TLS |
+| `VeyonIG_BlockProxy` | TCP 8080,8443,3128 | Proxy / alternate HTTP |
+| `VeyonIG_AllowLAN` | any → `localsubnet` | Keeps the LAN reachable (more-specific `remoteip` rule wins) |
+
+### Plugin identity
+
+The plugin's UUID `a4b3c2d1-e5f6-7890-abcd-ef1234567890` is used in three places and must stay consistent: `Q_PLUGIN_METADATA(IID "io.veyon.Veyon.Plugins.InternetGuard")`, `uid()`, and the `Feature::Uid` passed to the `Feature` constructor.
+
+### Qt plugin metadata export
+
+Qt 5 exports `qt_plugin_query_metadata`; Qt 6 exports `qt_plugin_query_metadata_v2`. Both are generated automatically by `moc` / `AUTOMOC` — no manual action needed.

@@ -1,0 +1,10 @@
+#include <winuser.h>
+
+/* Application manifest: run as invoker (no forced elevation; we self-elevate
+   only when a write actually fails) and enable the modern common controls so
+   the folder browser uses the new-style dialog. */
+1 24 "installer.manifest"
+
+/* Embedded plugin payload, extracted at install time. The DLL must be present
+   next to this .rc file when windres runs (the build script copies it here). */
+101 RCDATA "internet-guard.dll"

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/internet-guard">
+        <file>network-offline.svg</file>
+    </qresource>
+</RCC>
