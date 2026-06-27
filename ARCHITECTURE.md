@@ -122,8 +122,10 @@ For the CMake flags (`WITH_QT6`, `VEYON_TARGET_VERSION`, `VEYON_SOURCE_DIR`, `VE
 The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-guard-qt6.dll`) built from:
 
 - **`InternetGuardPlugin.h/.cpp`** — the entire plugin logic. Inherits from both `FeatureProviderInterface` and `PluginInterface`. Two roles depending on which side of Veyon loads it:
-  - **Master side** (`controlFeature`): on `Operation::Start`/`Stop` sends a `BlockInternetCommand` / `AllowInternetCommand` `FeatureMessage` to the selected computers via `sendFeatureMessage`.
-  - **Server side** (`handleFeatureMessage`): receives the message and calls `blockInternet()` / `allowInternet()`. These run `netsh` via `runNetshBatch()`, which launches all commands as parallel `QProcess` instances and then waits — total wall time ≈ max(individual) instead of sum. The destructor calls `allowInternet()` so stale rules are never left on unload.
+  - **Master side** (`controlFeature`): on `Operation::Start`/`Stop` sends a `BlockInternetCommand` / `AllowInternetCommand` `FeatureMessage` to the targeted computers via `sendFeatureMessage`.
+  - **Server side** (`handleFeatureMessage`): receives the message and calls `blockInternet()` / `allowInternet()`. These run `netsh` via `runNetshBatch()`, which launches all commands as parallel `QProcess` instances and then waits — total wall time ≈ max(individual) instead of sum. `blockInternet()` first calls `ensureFirewallEnabled()` (`netsh advfirewall set allprofiles state on`) because block rules have no effect while a profile is off — the typical cause of a single client not being blocked. The destructor calls `allowInternet()` so stale rules are never left on unload.
+
+  **Features exposed** (`featureList()`): a `Mode` toggle (`Block/Allow Internet`, toolbar) plus two `Action` sub-features (`Block Internet` / `Allow Internet`) whose `parentUid` is the toggle. The toggle gives a one-click global block/allow; the sub-features appear in the toolbar dropdown and the right-click context menu and act on **exactly the selected computers** — Veyon already passes the selection to `controlFeature`, but a `Mode` toggle tracks a single global state, so explicit per-selection `Action` features are what make independent per-client control reliable. All commands are dispatched by command code in `handleFeatureMessage`, independent of which feature UID carried them.
 
 - **`VeyonCompat.h`** — single point of contact with the Veyon API + version macros + the `VEYON_DECODE_COMMAND` compatibility macro (see Version compatibility above).
 
@@ -149,7 +151,7 @@ All rules use the prefix `VeyonIG_` so they can be reliably deleted. `blockInter
 
 ### Plugin identity
 
-The plugin's UUID `a4b3c2d1-e5f6-7890-abcd-ef1234567890` is used in three places and must stay consistent: `Q_PLUGIN_METADATA(IID "io.veyon.Veyon.Plugins.InternetGuard")`, `uid()`, and the `Feature::Uid` passed to the `Feature` constructor.
+The plugin's UUID `a4b3c2d1-e5f6-7890-abcd-ef1234567890` is the identity of the **toggle** feature and must stay consistent across `uid()` and the toggle's `Feature::Uid` (the metadata IID `io.veyon.Veyon.Plugins.InternetGuard` is a separate, stable string). The two `Action` sub-features have their own constant UUIDs; only uniqueness matters for those.
 
 ### Qt plugin metadata export
 
@@ -169,3 +171,8 @@ Veyon renders a feature's icon with `QIcon(feature.iconUrl())`. Two constraints,
 - **`VEYON_TARGET_VERSION=4.7.5` is correct for *both* Qt5 and Qt6 builds** while the repo ships 4.7.5 headers; the `FeatureMessage` layout/wire format is identical up to 4.10.3. See "Why `VEYON_TARGET_VERSION=4.7.5`…".
 - **ABI:** match the target Veyon's MinGW/Qt — Qt5 ⇒ g++ 7.3 + Qt 5.12; Qt6 ⇒ the MinGW (13.1.0) bundled with the matching Qt 6.10.
 - **Do not commit `*_instructions*.txt` or any chatbot-instruction file** (already covered by `.gitignore`).
+- **Per-IP / per-domain blocking is intentionally NOT attempted (don't re-add it).** An "AI-sites only" feature (block ChatGPT/Claude/… while leaving the rest of the internet up) was prototyped via the `hosts` file (+ blocking public DoH/DoT resolvers to defeat browser "Secure DNS") and then **removed** because it cannot be made reliable or safe from the client with `netsh`/`hosts`:
+  1. The `hosts` file and DoH-blocking only affect **new** name resolutions. Browsers keep an **internal DNS cache and persistent HTTP/2-3 connections**; once a site is open it keeps working (real requests included) regardless — `ipconfig /flushdns` does not clear the browser's own cache.
+  2. Cutting an already-open connection requires blocking the destination **IP**, but the major AI sites sit on **shared CDNs (Cloudflare/Google)**, so per-IP firewall rules cause massive collateral damage.
+  3. Windows Firewall cannot filter by hostname/SNI, so it cannot target a single domain at the network layer.
+  Reliable per-site filtering belongs at the **network level** (DNS filtering on the router/firewall, or a filtering proxy), outside this plugin. The **full** internet block stays reliable because it filters by *port* and therefore also kills existing connections.

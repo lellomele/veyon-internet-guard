@@ -26,7 +26,7 @@ public:
 
 	QVersionNumber version() const override
 	{
-		return QVersionNumber(1, 0);
+		return QVersionNumber(1, 1);
 	}
 
 	QString name() const override
@@ -36,7 +36,7 @@ public:
 
 	QString description() const override
 	{
-		return tr("Block or allow internet access with a single toggle");
+		return tr("Block or allow internet access on student computers");
 	}
 
 	QString vendor() const override
@@ -69,10 +69,21 @@ private:
 		AllowInternetCommand
 	};
 
+	// True if the uid belongs to one of this plugin's features.
+	bool isOwnFeature(Feature::Uid featureUid) const;
+
+	// --- server-side actions (run on the student computer) ---
+	static void ensureFirewallEnabled();              // point 4: rules are useless if the firewall is off
 	static void runNetshBatch(const QList<QStringList>& batch);
 	static void blockInternet();
 	static void allowInternet();
 
+	// Internet toggle (Mode): one-click block/allow for the selected computers,
+	// with explicit per-selection Block/Allow actions as sub-features (shown in
+	// the toolbar dropdown and the right-click context menu).
 	const Feature m_internetAccessFeature;
+	const Feature m_blockInternetFeature;
+	const Feature m_allowInternetFeature;
+
 	const FeatureList m_features;
 };

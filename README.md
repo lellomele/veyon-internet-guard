@@ -11,25 +11,29 @@ local network (LAN) working. Deactivating the feature removes the rules.
 ## ⬇️ Download (pre-built)
 
 No need to compile anything: grab the ready-made files from
-**[v1.1.1](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
+**[v1.1.2](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.2)**
 (Windows only — after installing, restart Veyon Master and Veyon Server).
 
 | File | Veyon | What it is |
 |------|-------|------------|
-| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
-| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
 
 ---
 
 ## 1. What the plugin does
 
 - Adds a **Block Internet / Allow Internet** toggle button to the Veyon Master
-  console.
-- Sends a message (`FeatureMessage`) to the connected computers.
-- On the student computer, the Veyon Server applies or removes the firewall
-  rules.
+  console toolbar.
+- For finer control, **right-click one or more selected computers** and choose
+  **Block Internet** / **Allow Internet** from the context menu — the command
+  is sent only to the selected computers.
+- Sends a message (`FeatureMessage`) to the targeted computers.
+- On each student computer the Veyon Server applies or removes the firewall
+  rules. The Windows Firewall is automatically switched on first, since block
+  rules have no effect while it is disabled.
 
 ### Blocked ports and protocols
 
@@ -353,25 +357,29 @@ Disattivando la funzione le regole vengono rimosse.
 ## ⬇️ Download (versione compilata)
 
 Non serve compilare nulla: scarica i file già pronti dalla release
-**[v1.1.1](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
+**[v1.1.2](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.2)**
 (solo Windows — dopo l'installazione riavviare Veyon Master e Veyon Server).
 
 | File | Veyon | A cosa serve |
 |------|-------|--------------|
-| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
-| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.2/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
 
 ---
 
 ## 1. Scopo del plugin
 
-- Aggiunge alla console Veyon Master un pulsante **Blocca Internet / Consenti
-  Internet** (interruttore acceso/spento).
-- Invia ai computer collegati un messaggio (`FeatureMessage`).
-- Sul computer dello studente, il Veyon Server applica o rimuove le regole del
-  firewall.
+- Aggiunge alla toolbar della console Veyon Master un pulsante **Blocca Internet /
+  Consenti Internet** (interruttore acceso/spento).
+- Per un controllo più fine, **clic destro su uno o più computer selezionati** e
+  scegliere **Block Internet** / **Allow Internet** dal menù contestuale: il
+  comando viene inviato solo ai computer selezionati.
+- Invia ai computer interessati un messaggio (`FeatureMessage`).
+- Su ogni computer studente il Veyon Server applica o rimuove le regole del
+  firewall. Il Firewall di Windows viene prima riacceso automaticamente, perché
+  con il firewall disattivato le regole di blocco non avrebbero effetto.
 
 ### Porte e protocolli bloccati
 

@@ -11,6 +11,15 @@
 
 #include "InternetGuardPlugin.h"
 
+// Toolbar/menu icon shared by every feature of this plugin.
+static const char* ICON_URL = ":/internet-guard/network-offline.png";
+
+// Feature UUIDs. The toggle's UUID must stay stable (it is the plugin identity);
+// the others only need to be unique and constant.
+static const char* UID_TOGGLE    = "a4b3c2d1-e5f6-7890-abcd-ef1234567890";
+static const char* UID_BLOCK_NET  = "b1b2c3d4-1111-2222-3333-444455556666";
+static const char* UID_ALLOW_NET  = "c1c2c3d4-1111-2222-3333-444455556666";
+
 // Firewall rule names — all prefixed "VeyonIG_" for reliable cleanup.
 static const char* RULE_HTTP  = "VeyonIG_BlockHTTP";     // TCP  80
 static const char* RULE_HTTPS = "VeyonIG_BlockHTTPS";    // TCP 443
@@ -22,78 +31,121 @@ static const char* RULE_DOT_U = "VeyonIG_BlockDoT_UDP";  // UDP 853  (DNS-over-T
 static const char* RULE_PROXY = "VeyonIG_BlockProxy";    // TCP 8080,8443,3128
 static const char* RULE_LAN   = "VeyonIG_AllowLAN";      // allow localsubnet (all ports)
 
+// -------------------------------------------------------------------------
+
 InternetGuardPlugin::InternetGuardPlugin(QObject* parent) :
 	QObject(parent),
 	m_internetAccessFeature(
 		QStringLiteral("InternetGuard"),
 		Feature::Flag::Mode | Feature::Flag::AllComponents,
-		Feature::Uid(QStringLiteral("a4b3c2d1-e5f6-7890-abcd-ef1234567890")),
+		Feature::Uid(QLatin1String(UID_TOGGLE)),
 		Feature::Uid(),
 		tr("Block Internet"),
 		tr("Allow Internet"),
-		tr("Block or allow internet access on student computers"),
-		// PNG (not SVG): Veyon's Windows build ships no SVG icon engine,
-		// so an SVG path would yield an empty QIcon — see resources.qrc.
-		QStringLiteral(":/internet-guard/network-offline.png")
+		tr("Block or allow internet access on the selected computers"),
+		QLatin1String(ICON_URL)
 	),
-	m_features({ m_internetAccessFeature })
+	m_blockInternetFeature(
+		QStringLiteral("InternetGuardBlock"),
+		Feature::Flag::Action | Feature::Flag::AllComponents,
+		Feature::Uid(QLatin1String(UID_BLOCK_NET)),
+		m_internetAccessFeature.uid(),
+		tr("Block Internet"),
+		{},
+		tr("Block internet access on the selected computers"),
+		QLatin1String(ICON_URL)
+	),
+	m_allowInternetFeature(
+		QStringLiteral("InternetGuardAllow"),
+		Feature::Flag::Action | Feature::Flag::AllComponents,
+		Feature::Uid(QLatin1String(UID_ALLOW_NET)),
+		m_internetAccessFeature.uid(),
+		tr("Allow Internet"),
+		{},
+		tr("Restore internet access on the selected computers"),
+		QLatin1String(ICON_URL)
+	),
+	m_features({ m_internetAccessFeature, m_blockInternetFeature, m_allowInternetFeature })
 {
 }
 
-// Restore internet access on unload so stale rules are never left behind.
+// Restore internet access on unload so stale firewall rules are never left behind.
 InternetGuardPlugin::~InternetGuardPlugin()
 {
 	allowInternet();
 }
 
+bool InternetGuardPlugin::isOwnFeature(Feature::Uid featureUid) const
+{
+	return featureUid == m_internetAccessFeature.uid()
+	    || featureUid == m_blockInternetFeature.uid()
+	    || featureUid == m_allowInternetFeature.uid();
+}
+
 bool InternetGuardPlugin::controlFeature(Feature::Uid featureUid,
-                                                 Operation operation,
-                                                 const QVariantMap& arguments,
-                                                 const ComputerControlInterfaceList& computerControlInterfaces)
+                                         Operation operation,
+                                         const QVariantMap& arguments,
+                                         const ComputerControlInterfaceList& computerControlInterfaces)
 {
 	Q_UNUSED(arguments)
 
-	if (featureUid != m_internetAccessFeature.uid())
+	if (!isOwnFeature(featureUid))
 		return false;
 
-	if (operation == Operation::Start)
+	// The toolbar toggle (Mode): Start = block, Stop = allow.
+	if (featureUid == m_internetAccessFeature.uid())
 	{
-		sendFeatureMessage(FeatureMessage(featureUid, BlockInternetCommand), computerControlInterfaces);
+		if (operation == Operation::Start)
+			sendFeatureMessage(FeatureMessage(featureUid, BlockInternetCommand), computerControlInterfaces);
+		else if (operation == Operation::Stop)
+			sendFeatureMessage(FeatureMessage(featureUid, AllowInternetCommand), computerControlInterfaces);
+		else
+			return false;
 		return true;
 	}
 
-	if (operation == Operation::Stop)
-	{
+	// Per-selection actions are only triggered with Operation::Start.
+	if (operation != Operation::Start)
+		return false;
+
+	if (featureUid == m_blockInternetFeature.uid())
+		sendFeatureMessage(FeatureMessage(featureUid, BlockInternetCommand), computerControlInterfaces);
+	else if (featureUid == m_allowInternetFeature.uid())
 		sendFeatureMessage(FeatureMessage(featureUid, AllowInternetCommand), computerControlInterfaces);
-		return true;
+	else
+		return false;
+
+	return true;
+}
+
+bool InternetGuardPlugin::handleFeatureMessage(VeyonServerInterface& server,
+                                               const MessageContext& messageContext,
+                                               const FeatureMessage& message)
+{
+	Q_UNUSED(server)
+	Q_UNUSED(messageContext)
+
+	if (!isOwnFeature(message.featureUid()))
+		return false;
+
+	switch (VEYON_DECODE_COMMAND(message, Commands))
+	{
+	case BlockInternetCommand:  blockInternet();  return true;
+	case AllowInternetCommand:  allowInternet();  return true;
 	}
 
 	return false;
 }
 
-bool InternetGuardPlugin::handleFeatureMessage(VeyonServerInterface& server,
-                                                       const MessageContext& messageContext,
-                                                       const FeatureMessage& message)
+// Turning the firewall on is essential: block rules have no effect while a
+// profile is disabled, which is the typical cause of "one client was not
+// blocked". Safe to run unconditionally.
+void InternetGuardPlugin::ensureFirewallEnabled()
 {
-	Q_UNUSED(server)
-	Q_UNUSED(messageContext)
-
-	if (message.featureUid() != m_internetAccessFeature.uid())
-		return false;
-
-	if (VEYON_DECODE_COMMAND(message, Commands) == BlockInternetCommand)
-	{
-		blockInternet();
-		return true;
-	}
-
-	if (VEYON_DECODE_COMMAND(message, Commands) == AllowInternetCommand)
-	{
-		allowInternet();
-		return true;
-	}
-
-	return false;
+	runNetshBatch({
+		{ QStringLiteral("advfirewall"), QStringLiteral("set"),
+		  QStringLiteral("allprofiles"), QStringLiteral("state"), QStringLiteral("on") }
+	});
 }
 
 // Launches all netsh commands in parallel, then collects results and logs
@@ -110,16 +162,21 @@ void InternetGuardPlugin::runNetshBatch(const QList<QStringList>& batch)
 	}
 	for (auto* p : procs)
 	{
-		p->waitForFinished(10000);
-		if (p->exitCode() != 0)
-			qWarning() << "[InternetGuard] netsh failed:" << p->readAllStandardError();
+		if (!p->waitForStarted(5000))
+			qWarning() << "[InternetGuard] netsh failed to start:" << p->errorString();
+		else if (!p->waitForFinished(10000))
+			qWarning() << "[InternetGuard] netsh timed out:" << p->arguments();
+		else if (p->exitCode() != 0)
+			qWarning() << "[InternetGuard] netsh failed:" << p->arguments()
+			           << p->readAllStandardError();
 		delete p;
 	}
 }
 
 void InternetGuardPlugin::blockInternet()
 {
-	allowInternet(); // remove any leftover rules before re-adding
+	allowInternet();        // remove any leftover rules before re-adding
+	ensureFirewallEnabled();
 
 	runNetshBatch({
 		// LAN allow rule — Windows Firewall prefers the more-specific remoteip
