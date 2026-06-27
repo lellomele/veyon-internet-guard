@@ -11,7 +11,7 @@ local network (LAN) working. Deactivating the feature removes the rules.
 ## ⬇️ Download (pre-built)
 
 No need to compile anything: grab the ready-made files from
-**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
+**[v1.1.1](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
 (Windows only — after installing, restart Veyon Master and Veyon Server).
 
 | File | Veyon | What it is |
@@ -353,7 +353,7 @@ Disattivando la funzione le regole vengono rimosse.
 ## ⬇️ Download (versione compilata)
 
 Non serve compilare nulla: scarica i file già pronti dalla release
-**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
+**[v1.1.1](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
 (solo Windows — dopo l'installazione riavviare Veyon Master e Veyon Server).
 
 | File | Veyon | A cosa serve |
@@ -431,9 +431,9 @@ compatibilità sono centralizzate in [`VeyonCompat.h`](VeyonCompat.h).
 | Dipendenza                  | Build Qt 5                                           | Build Qt 6                                           |
 |-----------------------------|------------------------------------------------------|------------------------------------------------------|
 | CMake                       | ≥ 3.16                                               | ≥ 3.16                                               |
-| Qt (Core, Widgets, Network) | Qt 5.12 in `C:/Qt/5.12.12/mingw73_64`               | Qt **6.10.x** MinGW (deve essere ≤ al Qt del Veyon di destinazione — vedi §5.2) |
+| Qt (Core, Widgets, Network) | Qt 5.12 in `C:/Qt/5.12.12/mingw73_64`               | Qt **6.10.x** MinGW (deve essere ≤ al Qt del Veyon di destinazione — vedi § 5.2) |
 | Toolchain MinGW             | `C:/Qt/Tools/mingw730_64` (g++ 7.3, ABI di Qt 5.12) | MinGW **13.1.0** fornito con Qt 6.10                 |
-| Sorgenti Veyon              | `../veyon-src/core/src` (header 4.7.5)              | `../veyon-src/core/src` (header 4.7.5 — vedi §5.2)   |
+| Sorgenti Veyon              | `../veyon-src/core/src` (header 4.7.5)              | `../veyon-src/core/src` (header 4.7.5 — vedi § 5.2)   |
 | Import library Veyon        | `libveyon-core.dll.a` (nella root del repo)          | `libveyon-core-qt6.dll.a` (nella root del repo)      |
 | Standard C++                | C++14                                                | C++14                                                |
 
@@ -578,7 +578,7 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
 
    Devono comparire gli export `qt_plugin_instance` e `qt_plugin_query_metadata_v2`
    (Qt 6 usa `_v2`) e le dipendenze `Qt6Core.dll`, `Qt6Gui.dll`, `veyon-core.dll`.
-   Verificare inoltre che `qt_version_tag` sia ≤ al Qt del proprio Veyon (vedi §5.2).
+   Verificare inoltre che `qt_version_tag` sia ≤ al Qt del proprio Veyon (vedi § 5.2).
 
 3. **Verifica dell'installer** — installazione "a secco" in una cartella
    temporanea, senza GUI:
@@ -608,7 +608,7 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
   compatibile con il Veyon installato (vedi § 2). Usare g++ 7.3 (toolchain Qt 5.12)
   per la build Qt 5; per la build Qt 6 usare un Qt **≤ al minor del Qt del Veyon di
   destinazione** con il MinGW corrispondente (es. Qt 6.10 + MinGW 13.1.0) — un Qt
-  più recente fa ignorare silenziosamente il plugin (vedi §5.2).
+  più recente fa ignorare silenziosamente il plugin (vedi § 5.2).
 - **Permessi.** Il Veyon Server gira come servizio (account di sistema) e ha i
   privilegi per modificare il firewall; nessuna azione aggiuntiva è richiesta.
 - L'installer richiede i diritti di scrittura nella cartella di Veyon (di norma
