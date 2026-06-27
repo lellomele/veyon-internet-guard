@@ -11,8 +11,8 @@ A [Veyon](https://veyon.io/) teacher-side plugin that adds a "Block / Allow Inte
 
 The Veyon plugin interfaces used here — `PluginInterface`, `FeatureProviderInterface` (`controlFeature`, `handleFeatureMessage`, `sendFeatureMessage`), `Feature` (9-arg constructor + `Flag` enum), `FeatureMessage` — are **stable across every Veyon release from 4.7.5 through 4.10.x**. The source needs **no per-version `#if` branches for the API itself**. The only axis of variation is the **Qt major version** the target Veyon was built with:
 
-- Veyon 4.7.5 – 4.9.x → Qt 5 (default, `WITH_QT6=OFF`) → output: `internet-guard-qt5.dll`
-- Veyon 4.10.x → Qt 6 (`-DWITH_QT6=ON`) → output: `internet-guard-qt6.dll`
+- Veyon 4.7.5 – 4.8.x → Qt 5 (default, `WITH_QT6=OFF`) → output: `internet-guard-qt5.dll`
+- Veyon 4.9.0 – 4.10.x → Qt 6 (`WITH_QT6=ON`, the Veyon default since 4.9.0) → output: `internet-guard-qt6.dll`
 
 All version handling is centralized in `VeyonCompat.h` (single include point for the Veyon API + `VEYON_TARGET_VERSION_*` macros and `VEYON_VERSION_AT_LEAST()`).
 
@@ -42,11 +42,11 @@ same source compiles against both API versions.
 > Qt Svg is **not** a dependency: the toolbar icon is a PNG (see "Toolbar icon"
 > below), so `QIcon` needs no SVG icon-engine plugin.
 
-**ABI note (Qt 5):** build with the **same compiler/Qt that the installed Veyon uses**. The official Windows Veyon 4.7.5–4.9.x builds use MinGW g++ 7.3 + Qt 5.12; using a different MinGW (e.g. MSYS2 GCC) can produce a DLL that fails to load.
+**ABI note (Qt 5):** build with the **same compiler/Qt that the installed Veyon uses**. The official Windows Veyon 4.7.5–4.8.x builds use MinGW g++ 7.3 + Qt 5.12; using a different MinGW (e.g. MSYS2 GCC) can produce a DLL that fails to load.
 
 **ABI note (Qt 6 / GCC 16):** GCC 16 emits both a local vtable and `__imp__ZTV` references for `dllimport` base classes (`FeatureProviderInterface`, `PluginInterface`). Both definitions are identical (same header), so the linker flag `-Wl,--allow-multiple-definition` is added for WIN32 builds to silently resolve the conflict. This is harmless and expected with this toolchain combination.
 
-**Configure and build (Qt 5 / Veyon 4.7.5–4.9.x)**
+**Configure and build (Qt 5 / Veyon 4.7.5–4.8.x)**
 
 ```powershell
 $env:PATH = "C:\Qt\Tools\mingw730_64\bin;$env:PATH"
@@ -54,13 +54,13 @@ cmake -S . -B build-qt5 -G "MinGW Makefiles" `
   -DCMAKE_CXX_COMPILER="C:/Qt/Tools/mingw730_64/bin/g++.exe" `
   -DCMAKE_MAKE_PROGRAM="C:/Qt/Tools/mingw730_64/bin/mingw32-make.exe" `
   -DVEYON_TARGET_VERSION=4.7.5 `
-  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.9-src"
+  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.8-src"
 cmake --build build-qt5
 ```
 
 Output: `build-qt5/internet-guard-qt5.dll`.
 
-**Configure and build (Qt 6 / Veyon 4.10.x — verified against Veyon 4.10.3 / Qt 6.10.3)**
+**Configure and build (Qt 6 / Veyon 4.9.x–4.10.x — verified against Veyon 4.10.3 / Qt 6.10.3)**
 
 > ⚠️ **Critical: match the target Veyon's Qt 6 *minor* version (or build older).**
 > Qt's plugin loader rejects — *silently*, with no error and no toolbar button —
