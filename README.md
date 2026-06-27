@@ -11,15 +11,15 @@ local network (LAN) working. Deactivating the feature removes the rules.
 ## ⬇️ Download (pre-built)
 
 No need to compile anything: grab the ready-made files from
-**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.0)**
+**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
 (Windows only — after installing, restart Veyon Master and Veyon Server).
 
 | File | Veyon | What it is |
 |------|-------|------------|
-| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
-| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Recommended installer — picks the Veyon folder and copies the plugin, with self-elevation if needed. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
 
 ---
 
@@ -87,11 +87,14 @@ notes are centralized in [`VeyonCompat.h`](VeyonCompat.h).
 | Dependency                  | Qt 5 build                                          | Qt 6 build                                          |
 |-----------------------------|-----------------------------------------------------|-----------------------------------------------------|
 | CMake                       | ≥ 3.16                                              | ≥ 3.16                                              |
-| Qt (Core, Widgets, Svg, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64`         | Qt 6 via MSYS2 (`mingw-w64-x86_64-qt6-base`, `-svg`, `-network`) |
-| MinGW toolchain             | `C:/Qt/Tools/mingw730_64` (g++ 7.3, Qt 5.12 ABI)   | MSYS2 MinGW64 (`mingw-w64-x86_64-gcc`)              |
-| Veyon sources               | `../veyon-src/core/src` (4.7.5–4.9.x headers)      | `../veyon-src/core/src` (4.10.x headers)            |
+| Qt (Core, Widgets, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64`              | Qt **6.10.x** MinGW (must be ≤ the target Veyon's Qt — see §5.2) |
+| MinGW toolchain             | `C:/Qt/Tools/mingw730_64` (g++ 7.3, Qt 5.12 ABI)   | MinGW **13.1.0** bundled with Qt 6.10               |
+| Veyon sources               | `../veyon-src/core/src` (4.7.5 headers)            | `../veyon-src/core/src` (4.7.5 headers — see §5.2)  |
 | Veyon import library        | `libveyon-core.dll.a` (in repo root)                | `libveyon-core-qt6.dll.a` (in repo root)            |
-| C++ standard                | C++14                                               | C++14 (C++17 accepted by GCC 16)                    |
+| C++ standard                | C++14                                               | C++14                                               |
+
+> Qt Svg is **not** required: the toolbar icon is a PNG, so `QIcon` needs no SVG
+> icon-engine plugin (Veyon's Windows build does not ship one anyway).
 
 ---
 
@@ -132,39 +135,49 @@ Output: `build-qt5/internet-guard-qt5.dll`.
 > Newer MinGW compilers (e.g. MSYS2 ones) produce a DLL that may fail to load
 > correctly in Veyon.
 
-### 5.2 Veyon 4.10.x (Qt 6) — verified with MSYS2 + Qt 6.11.1
+### 5.2 Veyon 4.10.x (Qt 6) — verified against Veyon 4.10.3 / Qt 6.10.3
 
-Install prerequisites once (from a MSYS2 MINGW64 shell):
+> ⚠️ **Build with a Qt 6 *minor* version ≤ the one your Veyon ships.** Qt's plugin
+> loader silently rejects a plugin built with a *newer* Qt than the host (rule:
+> plugin minor ≤ host minor) — the result is exactly "no toolbar button", with no
+> error. Veyon 4.10.3 ships **Qt 6.10.3**, so build with Qt ≤ 6.10. To read your
+> Veyon's Qt version, check the `ProductVersion` of `Qt6Core.dll` in the Veyon
+> install folder.
 
-```bash
-pacman -S --noconfirm \
-  mingw-w64-x86_64-qt6-base \
-  mingw-w64-x86_64-qt6-svg \
-  mingw-w64-x86_64-cmake \
-  mingw-w64-x86_64-ninja \
-  mingw-w64-x86_64-gcc \
-  mingw-w64-x86_64-binutils
-```
-
-Then configure and build from PowerShell:
+Get a matching Qt 6.10 MinGW toolchain non-interactively with
+[`aqtinstall`](https://github.com/miurahr/aqtinstall) (no Qt account needed):
 
 ```powershell
-$env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+py -m pip install aqtinstall
+py -m aqt install-qt   windows desktop 6.10.3 win64_mingw --outputdir C:\Qt-aqt
+py -m aqt install-tool windows desktop tools_mingw1310     --outputdir C:\Qt-aqt
+```
 
-cmake -S . -B build-qt6 -G Ninja `
+Then configure and build:
+
+```powershell
+$mingw = "C:\Qt-aqt\Tools\mingw1310_64\bin"
+$qt6   = "C:\Qt-aqt\6.10.3\mingw_64"
+$env:PATH = "$mingw;$qt6\bin;$env:PATH"
+
+cmake -S . -B build-qt6 -G "MinGW Makefiles" `
   -DWITH_QT6=ON `
-  -DCMAKE_PREFIX_PATH="C:/msys64/mingw64" `
-  -DVEYON_TARGET_VERSION=4.10.4 `
-  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.10-src"
+  -DCMAKE_CXX_COMPILER="$mingw/g++.exe" `
+  -DCMAKE_MAKE_PROGRAM="$mingw/mingw32-make.exe" `
+  -DCMAKE_PREFIX_PATH="$qt6" `
+  -DVEYON_TARGET_VERSION=4.7.5
 
 cmake --build build-qt6
 ```
 
-Output: `build-qt6/internet-guard-qt6.dll`.
+Output: `build-qt6/internet-guard-qt6.dll`. Verify its Qt tag is ≤ your Veyon's:
+`strings build-qt6\internet-guard-qt6.dll | Select-String qt_version_tag`.
 
-The repo already contains `libveyon-core-qt6.dll.a` (generated from Veyon 4.10.4's
-`veyon-core.dll`) and `libveyon-core-qt6.def` (its export list). They are
-selected automatically when `WITH_QT6=ON`.
+`VEYON_TARGET_VERSION=4.7.5` is intentional even for Veyon 4.10: the repo ships
+the 4.7.5 `core/src` headers, and `FeatureMessage`'s memory layout and wire format
+are identical through 4.10.3, so the plugin inter-operates correctly. The repo
+already contains `libveyon-core-qt6.dll.a` and `libveyon-core-qt6.def`, selected
+automatically when `WITH_QT6=ON`.
 
 ### 5.3 Building the installer
 
@@ -178,7 +191,8 @@ pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5
 pwsh -File installer\build-installer.ps1 -PluginDll build-qt6\internet-guard-qt6.dll
 ```
 
-Produces `installer\install-internet-guard.exe` (DLL included, self-contained executable).
+Produces `installer\install-internet-guard-qt5.exe` (or `…-qt6.exe`) — the name
+follows the embedded DLL. Each is a self-contained executable with no Qt dependency.
 
 ---
 
@@ -215,18 +229,19 @@ Veyon API and `netsh`). Verification is functional:
 2. **Build check (Qt 6)** — inspect the produced DLL:
 
    ```powershell
-   & "C:\msys64\mingw64\bin\objdump.exe" -p build-qt6\internet-guard-qt6.dll | Select-String "qt_plugin|DLL Name"
+   & "C:\Qt-aqt\Tools\mingw1310_64\bin\objdump.exe" -p build-qt6\internet-guard-qt6.dll | Select-String "qt_plugin|DLL Name"
    ```
 
    Expected: exports `qt_plugin_instance` and `qt_plugin_query_metadata_v2`
    (Qt 6 uses `_v2`), dependencies `Qt6Core.dll`, `Qt6Gui.dll`, `veyon-core.dll`.
+   Also check `qt_version_tag` is ≤ your Veyon's Qt (see §5.2).
 
 3. **Installer check** — a "dry run" install into a temporary folder, with no
    GUI:
 
    ```powershell
    $t = Join-Path $env:TEMP "ig_test"
-   .\installer\install-internet-guard.exe --elevated "$t"
+   .\installer\install-internet-guard-qt5.exe --elevated "$t"
    # expected: $t\plugins\internet-guard-qt5.dll (or -qt6.dll) identical to the compiled DLL
    ```
 
@@ -245,9 +260,11 @@ Veyon API and `netsh`). Verification is functional:
 
 - **Windows only.** Blocking uses `netsh advfirewall` (a Windows command), so
   the student computers must run Windows.
-- **ABI compatibility.** The DLL must be built with the same compiler/Qt as the
-  installed Veyon build (see §2). Use g++ 7.3 (Qt 5.12 toolchain) for the Qt5
-  build; MSYS2 MinGW64 GCC for the Qt6 build.
+- **ABI / Qt-version compatibility.** The DLL must be built with a compiler/Qt
+  compatible with the installed Veyon (see §2). Use g++ 7.3 (Qt 5.12 toolchain)
+  for the Qt5 build; for the Qt6 build use a Qt **≤ the target Veyon's Qt minor**
+  with the matching MinGW (e.g. Qt 6.10 + MinGW 13.1.0) — a newer Qt makes Veyon
+  silently ignore the plugin (see §5.2).
 - **Permissions.** The Veyon Server runs as a service (system account) and has
   the privileges to modify the firewall; no extra action is required.
 - The installer needs write access to the Veyon folder (usually under
@@ -257,7 +274,8 @@ Veyon API and `netsh`). Verification is functional:
 
 ## 9. Installing the plugin
 
-1. Run `installer\install-internet-guard.exe`.
+1. Run the installer for your Veyon (`install-internet-guard-qt6.exe` for 4.10.x,
+   `install-internet-guard-qt5.exe` for 4.7.5–4.9.x).
 2. Confirm/select the Veyon installation folder (the installer suggests a
    default detected from the registry or from `Program Files`).
 3. The installer copies the plugin DLL (`internet-guard-qt5.dll` or
@@ -279,8 +297,9 @@ InternetGuard/
 ├─ InternetGuardPlugin.cpp        Logic: Master side (sending commands) and Server side (netsh rules)
 ├─ VeyonCompat.h                  Single point of contact with the Veyon API + version macros
 ├─ CMakeLists.txt                 Multi-version build (WITH_QT6, VEYON_* flags)
-├─ resources.qrc                  Embeds the toolbar icon
-├─ network-offline.svg            Button icon
+├─ resources.qrc                  Embeds the toolbar icon (PNG)
+├─ network-offline.png            Toolbar icon (embedded; rendered by QIcon)
+├─ network-offline.svg            Editable source for the PNG (not used at runtime)
 ├─ libveyon-core.dll.a            veyon-core import library (Qt 5, Veyon 4.7.5–4.9.x)
 ├─ veyon-core.def                 Symbol list for the Qt 5 veyon-core.dll
 ├─ libveyon-core-qt6.dll.a        veyon-core import library (Qt 6, Veyon 4.10.x)
@@ -334,15 +353,15 @@ Disattivando la funzione le regole vengono rimosse.
 ## ⬇️ Download (versione compilata)
 
 Non serve compilare nulla: scarica i file già pronti dalla release
-**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.0)**
+**[v1.1.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.1)**
 (solo Windows — dopo l'installazione riavviare Veyon Master e Veyon Server).
 
 | File | Veyon | A cosa serve |
 |------|-------|--------------|
-| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
-| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.0/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[install-internet-guard-qt6.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt6.exe)** | 4.10.x (Qt 6) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt6.dll)** | 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[install-internet-guard-qt5.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/install-internet-guard-qt5.exe)** | 4.7.5 – 4.9.x (Qt 5) | Installer consigliato — seleziona la cartella di Veyon e copia il plugin, con auto-elevazione se necessario. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.1/internet-guard-qt5.dll)** | 4.7.5 – 4.9.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
 
 ---
 
@@ -409,14 +428,17 @@ compatibilità sono centralizzate in [`VeyonCompat.h`](VeyonCompat.h).
 
 **Per compilare il plugin**
 
-| Dipendenza                       | Build Qt 5                                           | Build Qt 6                                           |
-|----------------------------------|------------------------------------------------------|------------------------------------------------------|
-| CMake                            | ≥ 3.16                                               | ≥ 3.16                                               |
-| Qt (Core, Widgets, Svg, Network) | Qt 5.12 in `C:/Qt/5.12.12/mingw73_64`               | Qt 6 via MSYS2 (`mingw-w64-x86_64-qt6-base`, `-svg`, `-network`) |
-| Toolchain MinGW                  | `C:/Qt/Tools/mingw730_64` (g++ 7.3, ABI di Qt 5.12) | MSYS2 MinGW64 (`mingw-w64-x86_64-gcc`)               |
-| Sorgenti Veyon                   | `../veyon-src/core/src` (header 4.7.5–4.9.x)        | `../veyon-src/core/src` (header 4.10.x)              |
-| Import library Veyon             | `libveyon-core.dll.a` (nella root del repo)          | `libveyon-core-qt6.dll.a` (nella root del repo)      |
-| Standard C++                     | C++14                                                | C++14 (GCC 16 accetta C++17)                         |
+| Dipendenza                  | Build Qt 5                                           | Build Qt 6                                           |
+|-----------------------------|------------------------------------------------------|------------------------------------------------------|
+| CMake                       | ≥ 3.16                                               | ≥ 3.16                                               |
+| Qt (Core, Widgets, Network) | Qt 5.12 in `C:/Qt/5.12.12/mingw73_64`               | Qt **6.10.x** MinGW (deve essere ≤ al Qt del Veyon di destinazione — vedi §5.2) |
+| Toolchain MinGW             | `C:/Qt/Tools/mingw730_64` (g++ 7.3, ABI di Qt 5.12) | MinGW **13.1.0** fornito con Qt 6.10                 |
+| Sorgenti Veyon              | `../veyon-src/core/src` (header 4.7.5)              | `../veyon-src/core/src` (header 4.7.5 — vedi §5.2)   |
+| Import library Veyon        | `libveyon-core.dll.a` (nella root del repo)          | `libveyon-core-qt6.dll.a` (nella root del repo)      |
+| Standard C++                | C++14                                                | C++14                                                |
+
+> Qt Svg **non** è richiesto: l'icona della toolbar è un PNG, quindi `QIcon` non
+> ha bisogno dell'icon-engine SVG (che comunque la build Windows di Veyon non include).
 
 ---
 
@@ -458,39 +480,49 @@ Output: `build-qt5/internet-guard-qt5.dll`.
 > più recenti (es. quelli di MSYS2) producono una DLL che potrebbe non caricarsi
 > correttamente in Veyon.
 
-### 5.2 Veyon 4.10.x (Qt 6) — verificato con MSYS2 + Qt 6.11.1
+### 5.2 Veyon 4.10.x (Qt 6) — verificato su Veyon 4.10.3 / Qt 6.10.3
 
-Installare i prerequisiti una sola volta (da una shell MSYS2 MINGW64):
+> ⚠️ **Compilare con un Qt 6 di versione *minor* ≤ a quella del tuo Veyon.** Il
+> caricatore di plugin di Qt rifiuta silenziosamente un plugin compilato con un Qt
+> più recente dell'host (regola: minor del plugin ≤ minor dell'host) — il risultato
+> è esattamente «nessun pulsante nella toolbar», senza errori. Veyon 4.10.3 include
+> **Qt 6.10.3**, quindi compilare con Qt ≤ 6.10. Per leggere la versione di Qt del
+> tuo Veyon, controlla il `ProductVersion` di `Qt6Core.dll` nella cartella di Veyon.
 
-```bash
-pacman -S --noconfirm \
-  mingw-w64-x86_64-qt6-base \
-  mingw-w64-x86_64-qt6-svg \
-  mingw-w64-x86_64-cmake \
-  mingw-w64-x86_64-ninja \
-  mingw-w64-x86_64-gcc \
-  mingw-w64-x86_64-binutils
-```
-
-Poi configurare e compilare da PowerShell:
+Procurarsi un toolchain Qt 6.10 MinGW in modo non interattivo con
+[`aqtinstall`](https://github.com/miurahr/aqtinstall) (senza account Qt):
 
 ```powershell
-$env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+py -m pip install aqtinstall
+py -m aqt install-qt   windows desktop 6.10.3 win64_mingw --outputdir C:\Qt-aqt
+py -m aqt install-tool windows desktop tools_mingw1310     --outputdir C:\Qt-aqt
+```
 
-cmake -S . -B build-qt6 -G Ninja `
+Poi configurare e compilare:
+
+```powershell
+$mingw = "C:\Qt-aqt\Tools\mingw1310_64\bin"
+$qt6   = "C:\Qt-aqt\6.10.3\mingw_64"
+$env:PATH = "$mingw;$qt6\bin;$env:PATH"
+
+cmake -S . -B build-qt6 -G "MinGW Makefiles" `
   -DWITH_QT6=ON `
-  -DCMAKE_PREFIX_PATH="C:/msys64/mingw64" `
-  -DVEYON_TARGET_VERSION=4.10.4 `
-  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.10-src"
+  -DCMAKE_CXX_COMPILER="$mingw/g++.exe" `
+  -DCMAKE_MAKE_PROGRAM="$mingw/mingw32-make.exe" `
+  -DCMAKE_PREFIX_PATH="$qt6" `
+  -DVEYON_TARGET_VERSION=4.7.5
 
 cmake --build build-qt6
 ```
 
-Output: `build-qt6/internet-guard-qt6.dll`.
+Output: `build-qt6/internet-guard-qt6.dll`. Verifica che il tag Qt sia ≤ a quello
+del tuo Veyon: `strings build-qt6\internet-guard-qt6.dll | Select-String qt_version_tag`.
 
-Il repo contiene già `libveyon-core-qt6.dll.a` (generata dalla `veyon-core.dll`
-di Veyon 4.10.4) e `libveyon-core-qt6.def` (lista degli export). Vengono
-selezionate automaticamente quando `WITH_QT6=ON`.
+`VEYON_TARGET_VERSION=4.7.5` è voluto anche per Veyon 4.10: il repo contiene gli
+header 4.7.5 di `core/src`, e il layout in memoria e il formato su filo di
+`FeatureMessage` sono identici fino alla 4.10.3, quindi il plugin interopera
+correttamente. Il repo contiene già `libveyon-core-qt6.dll.a` e
+`libveyon-core-qt6.def`, selezionate automaticamente quando `WITH_QT6=ON`.
 
 ### 5.3 Creazione dell'installer
 
@@ -504,7 +536,8 @@ pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5
 pwsh -File installer\build-installer.ps1 -PluginDll build-qt6\internet-guard-qt6.dll
 ```
 
-Produce `installer\install-internet-guard.exe` (DLL inclusa, eseguibile autonomo).
+Produce `installer\install-internet-guard-qt5.exe` (o `…-qt6.exe`) — il nome segue
+la DLL incorporata. Ciascuno è un eseguibile autonomo senza dipendenze da Qt.
 
 ---
 
@@ -540,18 +573,19 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
 2. **Verifica di compilazione (Qt 6)** — controllo della DLL prodotta:
 
    ```powershell
-   & "C:\msys64\mingw64\bin\objdump.exe" -p build-qt6\internet-guard-qt6.dll | Select-String "qt_plugin|DLL Name"
+   & "C:\Qt-aqt\Tools\mingw1310_64\bin\objdump.exe" -p build-qt6\internet-guard-qt6.dll | Select-String "qt_plugin|DLL Name"
    ```
 
    Devono comparire gli export `qt_plugin_instance` e `qt_plugin_query_metadata_v2`
    (Qt 6 usa `_v2`) e le dipendenze `Qt6Core.dll`, `Qt6Gui.dll`, `veyon-core.dll`.
+   Verificare inoltre che `qt_version_tag` sia ≤ al Qt del proprio Veyon (vedi §5.2).
 
 3. **Verifica dell'installer** — installazione "a secco" in una cartella
    temporanea, senza GUI:
 
    ```powershell
    $t = Join-Path $env:TEMP "ig_test"
-   .\installer\install-internet-guard.exe --elevated "$t"
+   .\installer\install-internet-guard-qt5.exe --elevated "$t"
    # atteso: $t\plugins\internet-guard-qt5.dll (o -qt6.dll) identico alla DLL compilata
    ```
 
@@ -570,9 +604,11 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
 
 - **Funziona solo su Windows.** Il blocco usa `netsh advfirewall` (comando di
   Windows), quindi i computer degli studenti devono avere Windows.
-- **Compatibilità ABI.** La DLL va compilata con lo stesso compilatore/Qt della
-  build di Veyon installata (vedi § 2). Usare g++ 7.3 (toolchain Qt 5.12) per
-  la build Qt 5; MSYS2 MinGW64 GCC per la build Qt 6.
+- **Compatibilità ABI / versione di Qt.** La DLL va compilata con un compilatore/Qt
+  compatibile con il Veyon installato (vedi § 2). Usare g++ 7.3 (toolchain Qt 5.12)
+  per la build Qt 5; per la build Qt 6 usare un Qt **≤ al minor del Qt del Veyon di
+  destinazione** con il MinGW corrispondente (es. Qt 6.10 + MinGW 13.1.0) — un Qt
+  più recente fa ignorare silenziosamente il plugin (vedi §5.2).
 - **Permessi.** Il Veyon Server gira come servizio (account di sistema) e ha i
   privilegi per modificare il firewall; nessuna azione aggiuntiva è richiesta.
 - L'installer richiede i diritti di scrittura nella cartella di Veyon (di norma
@@ -582,7 +618,8 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
 
 ## 9. Installazione del plugin
 
-1. Eseguire `installer\install-internet-guard.exe`.
+1. Eseguire l'installer adatto al proprio Veyon (`install-internet-guard-qt6.exe`
+   per 4.10.x, `install-internet-guard-qt5.exe` per 4.7.5–4.9.x).
 2. Confermare/selezionare la cartella di installazione di Veyon (l'installer ne
    propone una predefinita rilevandola dal registro o da `Program Files`).
 3. L'installer copia la DLL del plugin (`internet-guard-qt5.dll` o
@@ -604,8 +641,9 @@ InternetGuard/
 ├─ InternetGuardPlugin.cpp        Logica: lato Master (invio comandi) e lato Server (regole netsh)
 ├─ VeyonCompat.h                  Punto unico di contatto con l'API Veyon + macro di versione
 ├─ CMakeLists.txt                 Build multi-versione (flag WITH_QT6, VEYON_*)
-├─ resources.qrc                  Incorpora l'icona della toolbar
-├─ network-offline.svg            Icona del pulsante
+├─ resources.qrc                  Incorpora l'icona della toolbar (PNG)
+├─ network-offline.png            Icona della toolbar (incorporata; resa da QIcon)
+├─ network-offline.svg            Sorgente modificabile del PNG (non usato a runtime)
 ├─ libveyon-core.dll.a            Import library di veyon-core (Qt 5, Veyon 4.7.5–4.9.x)
 ├─ veyon-core.def                 Elenco simboli esportati da veyon-core.dll (Qt 5)
 ├─ libveyon-core-qt6.dll.a        Import library di veyon-core (Qt 6, Veyon 4.10.x)

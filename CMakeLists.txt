@@ -73,13 +73,14 @@ if(NOT WITH_QT6 AND NOT DEFINED Qt5_DIR
     set(CMAKE_PREFIX_PATH "C:/Qt/5.12.12/mingw73_64")
 endif()
 
+# The toolbar icon is a PNG (see resources.qrc), so Qt Svg is not needed.
 if(WITH_QT6)
-    find_package(Qt6 REQUIRED COMPONENTS Core Widgets Svg Network)
-    set(VEYON_QT_LIBS Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Network)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+    set(VEYON_QT_LIBS Qt6::Core Qt6::Widgets Qt6::Network)
     set(VEYON_QT_MAJOR 6)
 else()
-    find_package(Qt5 5.12 REQUIRED COMPONENTS Core Widgets Svg Network)
-    set(VEYON_QT_LIBS Qt5::Core Qt5::Widgets Qt5::Svg Qt5::Network)
+    find_package(Qt5 5.12 REQUIRED COMPONENTS Core Widgets Network)
+    set(VEYON_QT_LIBS Qt5::Core Qt5::Widgets Qt5::Network)
     set(VEYON_QT_MAJOR 5)
 endif()
 

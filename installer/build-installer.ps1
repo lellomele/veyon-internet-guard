@@ -22,6 +22,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Resolve a relative -PluginDll against the caller's directory *before* we cd into
+# the installer folder, otherwise the relative path would break.
+if ($PluginDll -and -not [System.IO.Path]::IsPathRooted($PluginDll)) {
+    $PluginDll = Join-Path (Get-Location).Path $PluginDll
+}
+
 Set-Location $PSScriptRoot
 
 if (-not (Test-Path $PluginDll)) {
@@ -60,14 +67,21 @@ Write-Host "Compilazione risorse (windres)..."
 & $windres installer.rc -O coff -o installer_res.o
 if ($LASTEXITCODE -ne 0) { throw "windres fallito." }
 
+# Pass the embedded DLL's filename to installer.cpp via a generated header that is
+# force-included (-include). Writing the L"..." literal to a file sidesteps the
+# shell-quoting pitfalls of passing -DPLUGIN_NAME=L"..." through PowerShell.
+$nameHeader = "plugin_name_gen.h"
+Set-Content -Path $nameHeader -Value "#define PLUGIN_NAME L`"$DllName`"" -Encoding ASCII
+
 Write-Host "Compilazione e link installer..."
 & $gpp -std=c++14 -O2 -municode -mwindows `
-    "-DPLUGIN_NAME=L\`"$DllName\`"" `
+    -include $nameHeader `
     installer.cpp installer_res.o `
     -o $OutputExe `
     -static -static-libgcc -static-libstdc++ `
     -lshell32 -lole32 -ladvapi32 -luser32
-if ($LASTEXITCODE -ne 0) { throw "g++ fallito." }
+$gppExit = $LASTEXITCODE
 
-Remove-Item installer_res.o, ".\internet-guard.dll" -ErrorAction SilentlyContinue
+Remove-Item installer_res.o, ".\internet-guard.dll", $nameHeader -ErrorAction SilentlyContinue
+if ($gppExit -ne 0) { throw "g++ fallito." }
 Write-Host "Fatto: $(Join-Path $PSScriptRoot $OutputExe)"

@@ -32,7 +32,9 @@ InternetGuardPlugin::InternetGuardPlugin(QObject* parent) :
 		tr("Block Internet"),
 		tr("Allow Internet"),
 		tr("Block or allow internet access on student computers"),
-		QStringLiteral(":/internet-guard/network-offline.svg")
+		// PNG (not SVG): Veyon's Windows build ships no SVG icon engine,
+		// so an SVG path would yield an empty QIcon — see resources.qrc.
+		QStringLiteral(":/internet-guard/network-offline.png")
 	),
 	m_features({ m_internetAccessFeature })
 {

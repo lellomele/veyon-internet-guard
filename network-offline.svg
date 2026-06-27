@@ -32,7 +32,7 @@
   <circle cx="32" cy="32" r="26" fill="none" stroke="#0D47A1" stroke-width="1.5"/>
 
   <!-- Prohibition sign -->
-  <circle cx="32" cy="32" r="26" fill="rgba(229,57,53,0.18)" stroke="#E53935" stroke-width="5"/>
+  <circle cx="32" cy="32" r="26" fill="#E53935" fill-opacity="0.18" stroke="#E53935" stroke-width="5"/>
   <line x1="13.6" y1="13.6" x2="50.4" y2="50.4"
         stroke="#E53935" stroke-width="5" stroke-linecap="round"/>
 </svg>

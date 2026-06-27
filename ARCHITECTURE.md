@@ -33,11 +33,14 @@ same source compiles against both API versions.
 | Dependency | Qt 5 build | Qt 6 build |
 |---|---|---|
 | CMake | ≥ 3.16 | ≥ 3.16 |
-| Qt (Core, Widgets, Svg, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64` | Qt 6 via MSYS2 (`mingw-w64-x86_64-qt6-*`) |
-| MinGW toolchain | `C:/Qt/Tools/mingw730_64` (g++ 7.3) | MSYS2 MinGW64 GCC |
-| Veyon source tree | `../veyon-src/core/src` (4.7.5–4.9.x) | `../veyon-src/core/src` (4.10.x) |
+| Qt (Core, Widgets, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64` | Qt **6.10.x** MinGW (e.g. `C:/Qt-aqt/6.10.3/mingw_64`) |
+| MinGW toolchain | `C:/Qt/Tools/mingw730_64` (g++ 7.3) | MinGW **13.1.0** that ships with Qt 6.10 (`tools_mingw1310`) |
+| Veyon source tree | `../veyon-src/core/src` (4.7.5 headers — see note) | `../veyon-src/core/src` (4.7.5 headers — see note) |
 | Veyon import library | `libveyon-core.dll.a` (in repo root) | `libveyon-core-qt6.dll.a` (in repo root) |
-| C++ standard | C++14 | C++14 (GCC 16 accepts C++17) |
+| C++ standard | C++14 | C++14 |
+
+> Qt Svg is **not** a dependency: the toolbar icon is a PNG (see "Toolbar icon"
+> below), so `QIcon` needs no SVG icon-engine plugin.
 
 **ABI note (Qt 5):** build with the **same compiler/Qt that the installed Veyon uses**. The official Windows Veyon 4.7.5–4.9.x builds use MinGW g++ 7.3 + Qt 5.12; using a different MinGW (e.g. MSYS2 GCC) can produce a DLL that fails to load.
 
@@ -57,23 +60,60 @@ cmake --build build-qt5
 
 Output: `build-qt5/internet-guard-qt5.dll`.
 
-**Configure and build (Qt 6 / Veyon 4.10.x — verified with MSYS2 + Qt 6.11.1)**
+**Configure and build (Qt 6 / Veyon 4.10.x — verified against Veyon 4.10.3 / Qt 6.10.3)**
+
+> ⚠️ **Critical: match the target Veyon's Qt 6 *minor* version (or build older).**
+> Qt's plugin loader rejects — *silently*, with no error and no toolbar button —
+> any plugin built with a Qt **newer** than the host application
+> (rule: plugin minor ≤ host minor, same major). Veyon 4.10.3 ships Qt **6.10.3**,
+> so the plugin must be built with Qt ≤ 6.10. An earlier attempt built with
+> MSYS2's rolling **Qt 6.11** produced a DLL tagged `qt_version_tag_6_11` that
+> 4.10.3 refused to load. Check the tag of a built DLL with:
+> `strings internet-guard-qt6.dll | grep qt_version_tag` — it must be ≤ the
+> target's Qt. To find the target's Qt: read the `ProductVersion` of
+> `Qt6Core.dll` in the Veyon install folder.
+
+Get a matching Qt 6.10 MinGW toolchain non-interactively with
+[`aqtinstall`](https://github.com/miurahr/aqtinstall) (no Qt account needed):
 
 ```powershell
-$env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
-cmake -S . -B build-qt6 -G Ninja `
+py -m pip install aqtinstall
+py -m aqt install-qt   windows desktop 6.10.3 win64_mingw --outputdir C:\Qt-aqt
+py -m aqt install-tool windows desktop tools_mingw1310     --outputdir C:\Qt-aqt
+```
+
+Then configure and build with **MinGW Makefiles** (not Ninja — keeps the toolchain explicit):
+
+```powershell
+$mingw = "C:\Qt-aqt\Tools\mingw1310_64\bin"
+$qt6   = "C:\Qt-aqt\6.10.3\mingw_64"
+$env:PATH = "$mingw;$qt6\bin;$env:PATH"
+cmake -S . -B build-qt6 -G "MinGW Makefiles" `
   -DWITH_QT6=ON `
-  -DCMAKE_PREFIX_PATH="C:/msys64/mingw64" `
-  -DVEYON_TARGET_VERSION=4.10.4 `
-  -DVEYON_SOURCE_DIR="C:/path/to/veyon-4.10-src"
+  -DCMAKE_CXX_COMPILER="$mingw/g++.exe" `
+  -DCMAKE_MAKE_PROGRAM="$mingw/mingw32-make.exe" `
+  -DCMAKE_PREFIX_PATH="$qt6" `
+  -DVEYON_TARGET_VERSION=4.7.5
 cmake --build build-qt6
 ```
 
 Output: `build-qt6/internet-guard-qt6.dll`.
 
-The repo ships `libveyon-core-qt6.dll.a` (generated from Veyon 4.10.4's
+The repo ships `libveyon-core-qt6.dll.a` (generated from Veyon 4.10.x's
 `veyon-core.dll` via `objdump` + `dlltool`) and `libveyon-core-qt6.def`
 (the full export list). They are selected automatically when `WITH_QT6=ON`.
+
+**Why `VEYON_TARGET_VERSION=4.7.5` even when targeting Veyon 4.10.3.**
+The repo ships only the 4.7.5 `core/src` headers, whose `FeatureMessage` exposes
+`command()` as a plain `qint32`. That is fine against a 4.10.3 `veyon-core.dll`:
+`FeatureMessage`'s member layout is **byte-for-byte identical** between 4.7.5 and
+4.10.3 (`QUuid` + 4-byte command + `QVariantMap`, same order) and its wire format
+serialises the command as `qint32` in both. So a plugin compiled with the 4.7.5
+headers and the `<4.10` decode path (`static_cast<Commands>(msg.command())`)
+inter-operates correctly with Veyon 4.10.3 — confirmed by inspecting the 4.10.3
+`FeatureMessage.h`. Only if the repo is ever updated to *actual* 4.10+ headers
+must `VEYON_TARGET_VERSION` be set to ≥ 4.10 so `VEYON_DECODE_COMMAND` switches to
+the `command<Commands>()` template overload.
 
 For the CMake flags (`WITH_QT6`, `VEYON_TARGET_VERSION`, `VEYON_SOURCE_DIR`, `VEYON_CORE_LIBRARY`), see `README.md` §5–§6.
 
@@ -87,7 +127,7 @@ The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-gua
 
 - **`VeyonCompat.h`** — single point of contact with the Veyon API + version macros + the `VEYON_DECODE_COMMAND` compatibility macro (see Version compatibility above).
 
-- **`resources.qrc`** — embeds `network-offline.svg` as the toolbar icon (`:/internet-guard/network-offline.svg`). Qt Svg must be available for QIcon to render it.
+- **`resources.qrc`** — embeds `network-offline.png` as the toolbar icon (`:/internet-guard/network-offline.png`). See "Toolbar icon" below for why it is a PNG, not an SVG.
 
 - **`installer/`** — standalone native Win32 installer (`installer.cpp`, `installer.rc`, `installer.manifest`, `build-installer.ps1`). Statically linked, no Qt dependency; embeds the plugin DLL as an RCDATA resource. It suggests the Veyon folder (registry/Program Files), lets the user pick it, copies the DLL into `…\plugins\`, reports permission errors, and self-elevates (UAC `runas`) on access-denied. Build with `pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5.dll` (or `-qt6` variant).
 
@@ -114,3 +154,18 @@ The plugin's UUID `a4b3c2d1-e5f6-7890-abcd-ef1234567890` is used in three places
 ### Qt plugin metadata export
 
 Qt 5 exports `qt_plugin_query_metadata`; Qt 6 exports `qt_plugin_query_metadata_v2`. Both are generated automatically by `moc` / `AUTOMOC` — no manual action needed.
+
+### Toolbar icon (PNG, not SVG)
+
+Veyon renders a feature's icon with `QIcon(feature.iconUrl())`. Two constraints, both learned the hard way:
+
+1. **No SVG at runtime.** Veyon's Windows deployment does not ship Qt's SVG icon-engine plugin (`iconengines/qsvgicon.dll`), so `QIcon(":/…svg")` yields an *empty* icon — the toolbar button appears but blank (same background as its neighbours). Every built-in Veyon plugin uses PNG icons; so does this one (`:/internet-guard/network-offline.png`). This also removes any dependency on Qt Svg.
+2. **`network-offline.svg` is kept only as the editable source.** Regenerate the PNG after editing it. Note that Qt's SVG module is "SVG Tiny" and does **not** parse `rgba(r,g,b,a)` fill notation — it renders such a shape as opaque black (this is what originally hid the globe). Use `fill="#rrggbb" fill-opacity="0.x"` instead. Rasterize with any Qt build that has the Svg module (a ~20-line `QSvgRenderer` → `QPainter` on a transparent `QImage` → `img.save()` program at 128×128 is enough).
+
+## Lessons learned (read before changing build/icon/version code)
+
+- **Qt 6 plugin version gate.** Build the Qt 6 plugin with a Qt **≤ the target Veyon's Qt minor** (4.10.3 ⇒ Qt ≤ 6.10). A newer Qt makes Veyon reject the plugin silently (no button). Verify with `strings … | grep qt_version_tag`. See the Qt 6 build section.
+- **Icon must be PNG**, not SVG, and the source SVG must avoid `rgba()`. See "Toolbar icon".
+- **`VEYON_TARGET_VERSION=4.7.5` is correct for *both* Qt5 and Qt6 builds** while the repo ships 4.7.5 headers; the `FeatureMessage` layout/wire format is identical up to 4.10.3. See "Why `VEYON_TARGET_VERSION=4.7.5`…".
+- **ABI:** match the target Veyon's MinGW/Qt — Qt5 ⇒ g++ 7.3 + Qt 5.12; Qt6 ⇒ the MinGW (13.1.0) bundled with the matching Qt 6.10.
+- **Do not commit `*_instructions*.txt` or any chatbot-instruction file** (already covered by `.gitignore`).
