@@ -7,34 +7,35 @@
  * --------------------------------------------------------------------------
  * Compatibility notes (analisi di compatibilità)
  * --------------------------------------------------------------------------
- * The Veyon feature-plugin API used by InternetGuard is *stable* across every
- * release from 4.7.5 up to and including the 4.10.x line:
+ * SOURCE vs BINARY compatibility — read this before changing the build.
  *
- *   - PluginInterface            uid()/version()/name()/... : unchanged
- *   - FeatureProviderInterface   controlFeature(), the 3-arg
- *                                handleFeatureMessage(VeyonServerInterface&,
- *                                MessageContext&, FeatureMessage&) and the
- *                                protected sendFeatureMessage() helper :
- *                                unchanged (master only *adds* the optional
- *                                handleFeatureMessageFromWorker() virtual,
- *                                which we do not need to override).
- *   - Feature                    9-argument constructor + Flag enum : unchanged
- *   - FeatureMessage             FeatureMessage(uid, command) : unchanged
+ * At *source* level the plugin API (PluginInterface, FeatureProviderInterface,
+ * Feature, FeatureMessage) compiles unchanged against every Veyon release from
+ * 4.7.5 to 4.10.x, so no per-version #if branches are needed in the .cpp.
  *
- * Therefore the plugin source needs *no* per-version #if branches for the API
- * itself.  The only real axis of variation is the Qt major version that the
- * target Veyon build was compiled with:
+ * The *binary* ABI is a different matter: it is tied to the Veyon **core**
+ * version the plugin is compiled against — the class/vtable layout of those
+ * interfaces and the symbols exported by veyon-core.dll. Building against the
+ * wrong core version makes the Veyon Server *crash on load* (this actually
+ * happened: a Qt6 plugin built against 4.7.5 headers crashed Veyon 4.10.x).
+ * Two axes drive the build matrix:
  *
- *   - Veyon 4.7.x .. 4.9.x   -> Qt 5   (CMake default, WITH_QT6=OFF)
- *   - Veyon 4.10.x / Qt6 pkg -> Qt 6   (configure with -DWITH_QT6=ON)
+ *   1. Qt branch + version-gate. Veyon ships Qt5 up to 4.8.x and Qt6 from
+ *      4.9.0. Qt's plugin loader also rejects a plugin built with a Qt *minor*
+ *      newer than the host's. 4.9.x ships Qt 6.8 and 4.10.x ships Qt 6.10, so a
+ *      Qt6 plugin must be built with Qt <= 6.8 to load on both.
+ *   2. Core ABI. The interface headers and the FeatureMessage memory layout are
+ *      *identical* between 4.9.8 and 4.10.4 (verified by diffing core/src and by
+ *      loading the very same DLL on both), so one Qt6 build covers 4.9.0-4.10.x.
  *
- * The Qt5/Qt6 difference is handled entirely in CMakeLists.txt (which Qt
- * package is found and linked).  The C++ used here is restricted to C++14 —
- * the standard Veyon core itself is built with — so the same translation unit
- * compiles unchanged against either Qt branch.
+ * Resulting builds (selected in CMakeLists.txt):
  *
- * This header exists so that, should a future Veyon release ever break source
- * compatibility, the shim lives here and nowhere else.
+ *   - WITH_QT6=OFF -> Qt5,   core 4.7.5 -> Veyon 4.7.5-4.8.x
+ *   - WITH_QT6=ON  -> Qt 6.8, core 4.9.8 -> Veyon 4.9.0-4.10.x
+ *
+ * The C++ is restricted to C++14 (as the Veyon core itself), so the same
+ * translation unit compiles unchanged against either branch. This header is the
+ * single place where any future version shim should live.
  * --------------------------------------------------------------------------
  */
 
