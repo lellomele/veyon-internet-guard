@@ -22,16 +22,20 @@
  *
  *   1. Qt branch + version-gate. Veyon ships Qt5 up to 4.8.x and Qt6 from
  *      4.9.0. Qt's plugin loader also rejects a plugin built with a Qt *minor*
- *      newer than the host's. 4.9.x ships Qt 6.8 and 4.10.x ships Qt 6.10, so a
- *      Qt6 plugin must be built with Qt <= 6.8 to load on both.
- *   2. Core ABI. The interface headers and the FeatureMessage memory layout are
- *      *identical* between 4.9.8 and 4.10.4 (verified by diffing core/src and by
- *      loading the very same DLL on both), so one Qt6 build covers 4.9.0-4.10.x.
+ *      newer than the host's. The lowest Qt in the 4.9-4.10 range is *6.7.2*
+ *      (shipped by 4.9.0; later 4.9.x moved to 6.8, 4.10.x to 6.10), so a Qt6
+ *      plugin must be built with Qt 6.7 to load on the whole range.
+ *   2. Core ABI. The interfaces this plugin uses are binary-compatible across
+ *      4.9.0-4.10.x: the PluginInterface/FeatureProviderInterface headers are
+ *      identical, the FeatureMessage data layout is unchanged (`m_command` stays a
+ *      4-byte field), and the imported core symbols exist in every release —
+ *      verified by diffing core/src and by loading the very same DLL on 4.9.0,
+ *      4.9.8 and 4.10.4. So one Qt6 build, against the 4.9.0 core, covers the range.
  *
  * Resulting builds (selected in CMakeLists.txt):
  *
  *   - WITH_QT6=OFF -> Qt5,   core 4.7.5 -> Veyon 4.7.5-4.8.x
- *   - WITH_QT6=ON  -> Qt 6.8, core 4.9.8 -> Veyon 4.9.0-4.10.x
+ *   - WITH_QT6=ON  -> Qt 6.7, core 4.9.0 -> Veyon 4.9.0-4.10.x
  *
  * The C++ is restricted to C++14 (as the Veyon core itself), so the same
  * translation unit compiles unchanged against either branch. This header is the

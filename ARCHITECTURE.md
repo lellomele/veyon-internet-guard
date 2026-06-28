@@ -12,7 +12,7 @@ A [Veyon](https://veyon.io/) teacher-side plugin that adds a "Block / Allow Inte
 At *source* level the Veyon plugin interfaces used here — `PluginInterface`, `FeatureProviderInterface` (`controlFeature`, `handleFeatureMessage`, `sendFeatureMessage`), `Feature` (9-arg constructor + `Flag` enum), `FeatureMessage` — compile unchanged across every Veyon release from 4.7.5 through 4.10.x, with **no per-version `#if` branches**. The **binary ABI**, however, is tied to the Veyon *core* version the plugin is compiled against (see the **Binary ABI** lesson below — getting it wrong crashes the Veyon Server on load). Together with the Qt branch this gives two builds:
 
 - Veyon 4.7.5 – 4.8.x → Qt 5, **core 4.7.5** (default, `WITH_QT6=OFF`) → output: `internet-guard-qt5.dll`
-- Veyon 4.9.0 – 4.10.x → **Qt 6.8, core 4.9.8** (`WITH_QT6=ON`) → output: `internet-guard-qt6.dll` (one binary covers the whole 4.9–4.10 range)
+- Veyon 4.9.0 – 4.10.x → **Qt 6.7, core 4.9.0** (`WITH_QT6=ON`) → output: `internet-guard-qt6.dll` (one binary covers the whole 4.9–4.10 range)
 
 All version handling is centralized in `VeyonCompat.h` (single include point for the Veyon API + `VEYON_TARGET_VERSION_*` macros and `VEYON_VERSION_AT_LEAST()`).
 
@@ -33,10 +33,10 @@ same source compiles against both API versions.
 | Dependency | Qt 5 build | Qt 6 build |
 |---|---|---|
 | CMake | ≥ 3.16 | ≥ 3.16 |
-| Qt (Core, Widgets, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64` | Qt **6.8.x** MinGW (e.g. `C:/Qt-aqt/6.8.3/mingw_64`) |
+| Qt (Core, Widgets, Network) | Qt 5.12 at `C:/Qt/5.12.12/mingw73_64` | Qt **6.7.x** MinGW (e.g. `C:/Qt-aqt/6.7.2/mingw_64`) |
 | MinGW toolchain | `C:/Qt/Tools/mingw730_64` (g++ 7.3) | MinGW **13.1.0** (`tools_mingw1310`) |
-| Veyon source tree | a 4.7.5 checkout's `core/src` | a **4.9.8** checkout's `core/src` |
-| Veyon import library | `libveyon-core.dll.a` (in repo root) | `libveyon-core-qt6.dll.a` (from 4.9.8, in repo root) |
+| Veyon source tree | a 4.7.5 checkout's `core/src` | a **4.9.0** checkout's `core/src` |
+| Veyon import library | `libveyon-core.dll.a` (in repo root) | `libveyon-core-qt6.dll.a` (from 4.9.0, in repo root) |
 | C++ standard | C++14 | C++14 |
 
 > Qt Svg is **not** a dependency: the toolbar icon is a PNG (see "Toolbar icon"
@@ -60,52 +60,54 @@ cmake --build build-qt5
 
 Output: `build-qt5/internet-guard-qt5.dll`.
 
-**Configure and build (Qt 6 / Veyon 4.9.x–4.10.x — one binary, verified on Veyon 4.10.4)**
+**Configure and build (Qt 6 / Veyon 4.9.x–4.10.x — one binary, verified on Veyon 4.9.0 and 4.10.4)**
 
 > ⚠️ **Two things must match: the Qt minor *and* the Veyon core version.**
 > - *Version gate.* Qt's plugin loader rejects — *silently*, no error, no toolbar
 >   button — a plugin built with a Qt **newer** than the host (plugin minor ≤ host
->   minor, same major). 4.9.x ships Qt **6.8**, 4.10.x ships Qt **6.10**, so the
->   plugin is built with Qt **6.8** (the lowest in range) and loads on both. An
->   earlier attempt with MSYS2's rolling Qt 6.11 produced `qt_version_tag_6_11`,
->   refused by 4.10.x. Check with `strings internet-guard-qt6.dll | grep qt_version_tag`.
+>   minor, same major). The lowest Qt in the range is **6.7.2** (Veyon 4.9.0;
+>   later 4.9.x moved to 6.8, 4.10.x to 6.10), so the plugin is built with Qt
+>   **6.7** and loads on every host up to 4.10.x. An earlier attempt with MSYS2's
+>   rolling Qt 6.11 produced `qt_version_tag_6_11`, refused even by 4.10.x. Check
+>   with `strings internet-guard-qt6.dll | grep qt_version_tag`.
 > - *Core ABI.* Build against the headers **and** import library of the Veyon
->   **core** the plugin loads into, or the Server **crashes on load**. The interface
->   headers and the `FeatureMessage` memory layout are identical between 4.9.8 and
->   4.10.4, so 4.9.8 is the single target; the resulting DLL loads on both. Read the
->   host's Qt from the `ProductVersion` of `Qt6Core.dll` in the Veyon folder.
+>   **core** the plugin loads into, or the Server **crashes on load**. The
+>   interfaces this plugin uses are binary-compatible across 4.9.0–4.10.x, so the
+>   **4.9.0** core (the floor) is the single target; the resulting DLL loads on
+>   4.9.0, 4.9.8 and 4.10.4. Read the host's Qt from the `ProductVersion` of
+>   `Qt6Core.dll` in the Veyon folder.
 
-Get a Qt 6.8 MinGW toolchain non-interactively with
-[`aqtinstall`](https://github.com/miurahr/aqtinstall) and check out the 4.9.8 headers:
+Get a Qt 6.7 MinGW toolchain non-interactively with
+[`aqtinstall`](https://github.com/miurahr/aqtinstall) and check out the 4.9.0 headers:
 
 ```powershell
 py -m pip install aqtinstall
-py -m aqt install-qt   windows desktop 6.8.3 win64_mingw --outputdir C:\Qt-aqt
+py -m aqt install-qt   windows desktop 6.7.2 win64_mingw --outputdir C:\Qt-aqt
 py -m aqt install-tool windows desktop tools_mingw1310    --outputdir C:\Qt-aqt
-git clone --depth 1 --branch v4.9.8 https://github.com/veyon/veyon.git ..\veyon-src-498
+git clone --depth 1 --branch v4.9.0 https://github.com/veyon/veyon.git ..\veyon-src-490
 ```
 
 Then configure and build with **MinGW Makefiles** (not Ninja — keeps the toolchain explicit):
 
 ```powershell
 $mingw = "C:\Qt-aqt\Tools\mingw1310_64\bin"
-$qt6   = "C:\Qt-aqt\6.8.3\mingw_64"
+$qt6   = "C:\Qt-aqt\6.7.2\mingw_64"
 $env:PATH = "$mingw;$qt6\bin;$env:PATH"
 cmake -S . -B build-qt6 -G "MinGW Makefiles" `
   -DWITH_QT6=ON `
   -DCMAKE_CXX_COMPILER="$mingw/g++.exe" `
   -DCMAKE_MAKE_PROGRAM="$mingw/mingw32-make.exe" `
   -DCMAKE_PREFIX_PATH="$qt6" `
-  -DVEYON_SOURCE_DIR="..\veyon-src-498"
+  -DVEYON_SOURCE_DIR="..\veyon-src-490"
 cmake --build build-qt6
 ```
 
-Output: `build-qt6/internet-guard-qt6.dll` (`qt_version_tag_6_8`). `VEYON_TARGET_VERSION`
-defaults to 4.9.8 when `WITH_QT6=ON`, so `VEYON_DECODE_COMMAND` uses the `<4.10`
-`static_cast<Commands>(msg.command())` path — correct, since 4.9.8's `FeatureMessage`
+Output: `build-qt6/internet-guard-qt6.dll` (`qt_version_tag_6_7`). `VEYON_TARGET_VERSION`
+defaults to 4.9.0 when `WITH_QT6=ON`, so `VEYON_DECODE_COMMAND` uses the `<4.10`
+`static_cast<Commands>(msg.command())` path — correct, since 4.9.0's `FeatureMessage`
 exposes `command()` as `qint32`.
 
-The repo ships `libveyon-core-qt6.dll.a` (generated from Veyon **4.9.8**'s
+The repo ships `libveyon-core-qt6.dll.a` (generated from Veyon **4.9.0**'s
 `veyon-core.dll` via `gendef` + `dlltool`) and `libveyon-core-qt6.def` (its export
 list), selected automatically when `WITH_QT6=ON`. To target a different core,
 regenerate the import lib from that Veyon's `veyon-core.dll` and point
@@ -162,11 +164,11 @@ Veyon renders a feature's icon with `QIcon(feature.iconUrl())`. Two constraints,
 
 ## Lessons learned (read before changing build/icon/version code)
 
-- **Binary ABI ≠ source compatibility — this one crashes the Server.** The plugin must be compiled against the Veyon **core** version it loads into (interface headers + `veyon-core` import library). The source compiles fine against any 4.7.x–4.10.x headers, but a Qt6 DLL built against **4.7.5** headers **crashed Veyon 4.10.x at load** (vtable / class-layout mismatch) even though its Qt matched (both 6.10.3). Fix: build the Qt6 plugin against the **4.9.8** core. 4.9.8 and 4.10.4 are ABI-identical for our surface — verified by `diff`-ing `core/src` (the interface headers and `FeatureMessage.h` differ only in comments/naming; `m_command` stays a 4-byte field at the same offset) and by loading the very same DLL on both.
-- **Qt 6 plugin version gate.** Qt rejects — silently, no button — a plugin built with a Qt **newer** than the host's minor. 4.9.x = Qt 6.8, 4.10.x = Qt 6.10, so build the Qt6 plugin with **Qt 6.8** to cover both. Verify with `strings … | grep qt_version_tag` (must read `…_6_8`).
+- **Binary ABI ≠ source compatibility — this one crashes the Server.** The plugin must be compiled against the Veyon **core** version it loads into (interface headers + `veyon-core` import library). The source compiles fine against any 4.7.x–4.10.x headers, but a Qt6 DLL built against **4.7.5** headers **crashed Veyon 4.10.x at load** (vtable / class-layout mismatch) even though its Qt matched (both 6.10.3). Fix: build the Qt6 plugin against the **4.9.0** core (the floor of the Qt6 range). The interfaces this plugin uses are binary-compatible across 4.9.0–4.10.x — verified by `diff`-ing `core/src` (PluginInterface/FeatureProviderInterface headers identical; the `FeatureMessage` data layout — `m_command`, a 4-byte field — is unchanged; the 3 imported core symbols exist in every release) and by loading the very same DLL on 4.9.0, 4.9.8 and 4.10.4.
+- **Qt 6 plugin version gate.** Qt rejects — silently, no button — a plugin built with a Qt **newer** than the host's minor. The lowest Qt across 4.9.0–4.10.x is **6.7.2** (Veyon 4.9.0; later 4.9.x use 6.8, 4.10.x uses 6.10), so build the Qt6 plugin with **Qt 6.7** to cover the whole range. Verify with `strings … | grep qt_version_tag` (must read `…_6_7`).
 - **Icon must be PNG**, not SVG, and the source SVG must avoid `rgba()`. See "Toolbar icon".
-- **`VEYON_TARGET_VERSION` tracks the core:** 4.7.5 for the Qt5 build, 4.9.8 for the Qt6 build (auto-selected by `WITH_QT6` in CMake); it drives the `VEYON_DECODE_COMMAND` branch.
-- **ABI (toolchain):** match the target Veyon's MinGW/Qt — Qt5 ⇒ g++ 7.3 + Qt 5.12; Qt6 ⇒ MinGW 13.1.0 + Qt 6.8.
+- **`VEYON_TARGET_VERSION` tracks the core:** 4.7.5 for the Qt5 build, 4.9.0 for the Qt6 build (auto-selected by `WITH_QT6` in CMake); it drives the `VEYON_DECODE_COMMAND` branch.
+- **ABI (toolchain):** Qt5 ⇒ g++ 7.3 + Qt 5.12. Qt6 ⇒ Qt 6.7 + any recent MinGW (we use 13.1.0): the plugin imports only base C++ ABI symbols from libstdc++ (`operator new`/`delete`, `__cxxabiv1` type_info vtables), present in every Veyon's runtime, so the MinGW version need not match Qt 6.7's bundled 11.2.0.
 - **Do not commit `*_instructions*.txt` or any chatbot-instruction file** (already covered by `.gitignore`).
 - **Per-IP / per-domain blocking is intentionally NOT attempted (don't re-add it).** An "AI-sites only" feature (block ChatGPT/Claude/… while leaving the rest of the internet up) was prototyped via the `hosts` file (+ blocking public DoH/DoT resolvers to defeat browser "Secure DNS") and then **removed** because it cannot be made reliable or safe from the client with `netsh`/`hosts`:
   1. The `hosts` file and DoH-blocking only affect **new** name resolutions. Browsers keep an **internal DNS cache and persistent HTTP/2-3 connections**; once a site is open it keeps working (real requests included) regardless — `ipconfig /flushdns` does not clear the browser's own cache.

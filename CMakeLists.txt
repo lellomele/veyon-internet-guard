@@ -4,11 +4,11 @@
 # Multi-version build. The plugin's binary ABI is tied to the Veyon *core*
 # version it is compiled against, so there are two builds:
 #   Qt5  (WITH_QT6=OFF) -> Veyon 4.7.5-4.8.x   (core+Qt5 headers from 4.7.5)
-#   Qt6  (WITH_QT6=ON)  -> Veyon 4.9.0-4.10.x  (core headers from 4.9.8, Qt 6.8)
-# A single Qt6 binary covers 4.9-4.10 because the plugin interfaces and the
-# FeatureMessage memory layout are identical across that range, and building
-# with Qt 6.8 satisfies the plugin version-gate on both 4.9.x (Qt 6.8) and
-# 4.10.x (Qt 6.10). See VeyonCompat.h for the full compatibility analysis.
+#   Qt6  (WITH_QT6=ON)  -> Veyon 4.9.0-4.10.x  (core headers from 4.9.0, Qt 6.7)
+# A single Qt6 binary covers 4.9-4.10: the plugin's interface ABI is unchanged
+# across that range, and building with Qt 6.7 (the lowest Qt in the range, shipped
+# by 4.9.0) satisfies the plugin version-gate on every host up to 4.10.x (Qt 6.10).
+# See VeyonCompat.h for the full compatibility analysis.
 #
 # Output names:
 #   WITH_QT6=OFF  ->  internet-guard-qt5.dll
@@ -16,11 +16,11 @@
 #
 # Configurable cache variables:
 #   WITH_QT6             OFF      Build against Qt6 instead of Qt5
-#   VEYON_TARGET_VERSION auto     4.7.5 (Qt5) or 4.9.8 (Qt6); drives compat macros
+#   VEYON_TARGET_VERSION auto     4.7.5 (Qt5) or 4.9.0 (Qt6); drives compat macros
 #   VEYON_SOURCE_DIR     ../veyon-src   Veyon source tree (core/src headers):
-#                                       a 4.7.5 checkout for Qt5, a 4.9.8 checkout for Qt6
+#                                       a 4.7.5 checkout for Qt5, a 4.9.0 checkout for Qt6
 #   VEYON_CORE_LIBRARY   auto-selected  libveyon-core.dll.a (Qt5) or
-#                                       libveyon-core-qt6.dll.a (Qt6, from 4.9.8)
+#                                       libveyon-core-qt6.dll.a (Qt6, from 4.9.0)
 #
 cmake_minimum_required(VERSION 3.16)
 project(InternetGuard LANGUAGES CXX)
@@ -31,15 +31,15 @@ project(InternetGuard LANGUAGES CXX)
 option(WITH_QT6 "Build against Qt 6 (target Veyon built with WITH_QT6=ON)" OFF)
 
 # The binary ABI follows the Veyon *core* version, so the default target tracks
-# the Qt branch: Qt5 -> 4.7.5 (covers 4.7.5-4.8.x), Qt6 -> 4.9.8 (covers
+# the Qt branch: Qt5 -> 4.7.5 (covers 4.7.5-4.8.x), Qt6 -> 4.9.0 (covers
 # 4.9.0-4.10.x). Override only to target a specific point release.
 if(WITH_QT6)
-    set(_default_target_version "4.9.8")
+    set(_default_target_version "4.9.0")
 else()
     set(_default_target_version "4.7.5")
 endif()
 set(VEYON_TARGET_VERSION "${_default_target_version}" CACHE STRING
-    "Target Veyon version (4.7.5 for the Qt5 build, 4.9.8 for the Qt6 build)")
+    "Target Veyon version (4.7.5 for the Qt5 build, 4.9.0 for the Qt6 build)")
 
 set(VEYON_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../veyon-src" CACHE PATH
     "Path to the Veyon source tree providing core/src headers")
