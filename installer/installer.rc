@@ -5,6 +5,9 @@
    the folder browser uses the new-style dialog. */
 1 24 "installer.manifest"
 
-/* Embedded plugin payload, extracted at install time. The DLL must be present
-   next to this .rc file when windres runs (the build script copies it here). */
-101 RCDATA "internet-guard.dll"
+/* Embedded plugin payloads, extracted at install time. Both Qt variants are
+   carried; the installer picks the right one by detecting the Veyon Qt version.
+   Both DLLs must be present next to this .rc file when windres runs (the build
+   script copies them here). */
+101 RCDATA "internet-guard-qt5.dll"
+102 RCDATA "internet-guard-qt6.dll"

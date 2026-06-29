@@ -129,7 +129,7 @@ The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-gua
 
 - **`resources.qrc`** — embeds `network-offline.png` as the toolbar icon (`:/internet-guard/network-offline.png`). See "Toolbar icon" below for why it is a PNG, not an SVG.
 
-- **`installer/`** — standalone native Win32 installer (`installer.cpp`, `installer.rc`, `installer.manifest`, `build-installer.ps1`). Statically linked, no Qt dependency; embeds the plugin DLL as an RCDATA resource. It suggests the Veyon folder (registry/Program Files), lets the user pick it, copies the DLL into `…\plugins\`, reports permission errors, and self-elevates (UAC `runas`) on access-denied. Build with `pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5.dll` (or `-qt6` variant).
+- **`installer/`** — standalone native Win32 installer (`installer.cpp`, `installer.rc`, `installer.manifest`, `build-installer.ps1`). Statically linked, no Qt dependency; embeds **both** plugin DLLs (Qt5 + Qt6) as RCDATA resources. It suggests the Veyon folder (registry/Program Files), lets the user pick it, **detects whether that Veyon uses Qt 5 or Qt 6** (`Qt5Core.dll`/`Qt6Core.dll`) and installs the matching variant, **reads the Veyon version** (from the bundled executables, falling back to `veyon-core.dll`) and warns — without blocking — if it is below 4.7.5 or unreadable, copies the DLL into `…\plugins\` (removing the other-Qt variant), uses modern `TaskDialog` dialogs, reports permission errors, and self-elevates (UAC `runas`) on access-denied. Build with `pwsh -File installer\build-installer.ps1 -PluginDllQt5 build-qt5\internet-guard-qt5.dll -PluginDllQt6 build-qt6\internet-guard-qt6.dll`.
 
 ### Firewall rule names
 

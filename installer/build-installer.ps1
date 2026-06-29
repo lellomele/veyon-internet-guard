@@ -1,45 +1,47 @@
 <#
   build-installer.ps1 - builds the standalone InternetGuard installer .exe
 
-  Produces installer\install-internet-guard-<suffix>.exe with the plugin DLL embedded.
+  Produces installer\install-internet-guard.exe with BOTH plugin variants
+  (Qt 5 and Qt 6) embedded. At install time the installer detects whether the
+  target Veyon uses Qt 5 or Qt 6 and copies the matching library automatically.
   The installer itself has no Qt dependency (pure Win32, statically linked).
 
   Usage (from the repo root or the installer folder):
-      # Qt 5 build:
-      pwsh -File installer\build-installer.ps1 -PluginDll build-qt5\internet-guard-qt5.dll
-      # Qt 6 build:
-      pwsh -File installer\build-installer.ps1 -PluginDll build-qt6\internet-guard-qt6.dll
+      pwsh -File installer\build-installer.ps1 `
+          -PluginDllQt5 build-qt5\internet-guard-qt5.dll `
+          -PluginDllQt6 build-qt6\internet-guard-qt6.dll
 
   Parameters:
-      -PluginDll   Path to the plugin DLL to embed (determines the embedded name automatically)
-      -Mingw       Path to the MinGW bin folder (defaults to MSYS2 MinGW64, then Qt 5.12 MinGW)
-      -OutputExe   Output exe name (defaults to install-<DLL basename without .dll>.exe)
+      -PluginDllQt5  Path to the Qt 5 plugin DLL to embed
+      -PluginDllQt6  Path to the Qt 6 plugin DLL to embed
+      -Mingw         Path to the MinGW bin folder (defaults to MSYS2 MinGW64, then Qt 5.12 MinGW)
+      -OutputExe     Output exe name (defaults to install-internet-guard.exe)
 #>
 param(
-    [string]$PluginDll = "$PSScriptRoot\..\build-qt5\internet-guard-qt5.dll",
-    [string]$Mingw     = "",
-    [string]$OutputExe = ""
+    [string]$PluginDllQt5 = "$PSScriptRoot\..\build-qt5\internet-guard-qt5.dll",
+    [string]$PluginDllQt6 = "$PSScriptRoot\..\build-qt6\internet-guard-qt6.dll",
+    [string]$Mingw        = "",
+    [string]$OutputExe    = "install-internet-guard.exe"
 )
 
 $ErrorActionPreference = "Stop"
 
-# Resolve a relative -PluginDll against the caller's directory *before* we cd into
-# the installer folder, otherwise the relative path would break.
-if ($PluginDll -and -not [System.IO.Path]::IsPathRooted($PluginDll)) {
-    $PluginDll = Join-Path (Get-Location).Path $PluginDll
+# Resolve relative DLL paths against the caller's directory *before* we cd into
+# the installer folder, otherwise the relative paths would break.
+foreach ($name in 'PluginDllQt5', 'PluginDllQt6') {
+    $val = Get-Variable -Name $name -ValueOnly
+    if ($val -and -not [System.IO.Path]::IsPathRooted($val)) {
+        Set-Variable -Name $name -Value (Join-Path (Get-Location).Path $val)
+    }
 }
 
 Set-Location $PSScriptRoot
 
-if (-not (Test-Path $PluginDll)) {
-    throw "Plugin DLL non trovata: $PluginDll`nCompilare prima il plugin (vedi README)."
+if (-not (Test-Path $PluginDllQt5)) {
+    throw "Plugin DLL Qt5 non trovata: $PluginDllQt5`nCompilare prima il plugin (vedi README)."
 }
-
-# Derive the DLL name (e.g. "internet-guard-qt6.dll") and installer exe name.
-$DllName = [System.IO.Path]::GetFileName($PluginDll)
-if (-not $OutputExe) {
-    $base    = [System.IO.Path]::GetFileNameWithoutExtension($DllName)  # e.g. internet-guard-qt6
-    $OutputExe = "install-$base.exe"
+if (-not (Test-Path $PluginDllQt6)) {
+    throw "Plugin DLL Qt6 non trovata: $PluginDllQt6`nCompilare prima il plugin (vedi README)."
 }
 
 # Auto-detect MinGW: prefer MSYS2 MinGW64, fall back to Qt 5.12 toolchain.
@@ -56,32 +58,28 @@ if (-not $Mingw) {
 $gpp     = Join-Path $Mingw "g++.exe"
 $windres = Join-Path $Mingw "windres.exe"
 
-Write-Host "DLL da incorporare : $DllName"
-Write-Host "Exe di output      : $OutputExe"
-Write-Host "Toolchain MinGW    : $Mingw"
+Write-Host "DLL Qt5 da incorporare : $([System.IO.Path]::GetFileName($PluginDllQt5))"
+Write-Host "DLL Qt6 da incorporare : $([System.IO.Path]::GetFileName($PluginDllQt6))"
+Write-Host "Exe di output          : $OutputExe"
+Write-Host "Toolchain MinGW        : $Mingw"
 
-# windres reads the RCDATA payload relative to this folder.
-Copy-Item $PluginDll ".\internet-guard.dll" -Force
+# windres reads the RCDATA payloads relative to this folder; the .rc references
+# them by their canonical names, so copy each variant to the expected name.
+Copy-Item $PluginDllQt5 ".\internet-guard-qt5.dll" -Force
+Copy-Item $PluginDllQt6 ".\internet-guard-qt6.dll" -Force
 
 Write-Host "Compilazione risorse (windres)..."
 & $windres installer.rc -O coff -o installer_res.o
 if ($LASTEXITCODE -ne 0) { throw "windres fallito." }
 
-# Pass the embedded DLL's filename to installer.cpp via a generated header that is
-# force-included (-include). Writing the L"..." literal to a file sidesteps the
-# shell-quoting pitfalls of passing -DPLUGIN_NAME=L"..." through PowerShell.
-$nameHeader = "plugin_name_gen.h"
-Set-Content -Path $nameHeader -Value "#define PLUGIN_NAME L`"$DllName`"" -Encoding ASCII
-
 Write-Host "Compilazione e link installer..."
 & $gpp -std=c++14 -O2 -municode -mwindows `
-    -include $nameHeader `
     installer.cpp installer_res.o `
     -o $OutputExe `
     -static -static-libgcc -static-libstdc++ `
-    -lshell32 -lole32 -ladvapi32 -luser32
+    -lcomctl32 -lversion -lshell32 -lole32 -ladvapi32 -luser32
 $gppExit = $LASTEXITCODE
 
-Remove-Item installer_res.o, ".\internet-guard.dll", $nameHeader -ErrorAction SilentlyContinue
+Remove-Item installer_res.o, ".\internet-guard-qt5.dll", ".\internet-guard-qt6.dll" -ErrorAction SilentlyContinue
 if ($gppExit -ne 0) { throw "g++ fallito." }
 Write-Host "Fatto: $(Join-Path $PSScriptRoot $OutputExe)"
