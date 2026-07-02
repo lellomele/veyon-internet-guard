@@ -5,8 +5,9 @@
 Teacher-side plugin for [Veyon](https://veyon.io/) that adds a button to the
 **Veyon Master** console toolbar. When the teacher activates the feature, every
 **Veyon Server** on the student computers adds a few Windows Firewall rules
-(via `netsh advfirewall`) that block outbound Internet traffic while keeping the
-local network (LAN) working. Deactivating the feature removes the rules.
+(via the native firewall COM API, `INetFwPolicy2`) that block outbound Internet
+traffic while Veyon itself keeps working. Deactivating the feature removes the
+rules.
 
 ## ⬇️ Download (pre-built)
 
@@ -52,12 +53,17 @@ No need to compile anything: grab the ready-made files from
 | `VeyonIG_BlockDoT_TCP`   | TCP 853                       | DNS over TLS                |
 | `VeyonIG_BlockDoT_UDP`   | UDP 853                       | DNS over TLS                |
 | `VeyonIG_BlockProxy`     | TCP 8080, 8443, 3128          | Proxy / alternate HTTP      |
-| `VeyonIG_AllowLAN`       | any → `localsubnet`           | Keeps the LAN reachable     |
 
-The `VeyonIG_AllowLAN` rule allows all traffic toward the local subnet: Windows
-Firewall prefers the more-specific rule (`remoteip`), so Veyon and local network
-resources keep working even with Internet blocked. `blockInternet()` always
-removes existing rules before recreating them, to avoid duplicates.
+The rules are created through the Windows Firewall COM API (`INetFwPolicy2` /
+`INetFwRule`) — the same persistent rules `netsh` would create, but with no
+external process, no locale-dependent output and precise error reporting. The
+blocked ports apply to the **local subnet too**: Windows Firewall gives Block
+rules precedence over Allow rules, so a LAN exemption cannot work — and would
+leave internal proxies as an escape route anyway. Veyon's own ports are not
+touched, so teacher–student communication, file shares and printing keep
+working while Internet is blocked. `blockInternet()` always removes existing
+rules before recreating them, to avoid duplicates (the legacy `VeyonIG_AllowLAN`
+rule from plugin ≤ 1.1 is cleaned up as well).
 
 ---
 
@@ -241,7 +247,7 @@ adaptations.
 ## 7. Running the tests
 
 The plugin has no automated unit-test suite (it is a thin adapter between the
-Veyon API and `netsh`). Verification is functional:
+Veyon API and the Windows Firewall API). Verification is functional:
 
 1. **Build check (Qt 5)** — inspect the produced DLL:
 
@@ -272,7 +278,15 @@ Veyon API and `netsh`). Verification is functional:
    # expected: $t\plugins\internet-guard-qt6.dll (the variant matching the detected Qt)
    ```
 
-4. **Runtime check in Veyon**:
+4. **Firewall backend check (standalone)** — `tools/fw_test.cpp` exercises the
+   real rule creation/removal without Veyon (build command in the file header;
+   the exe is static, no Qt needed at runtime). Run it from an **elevated**
+   prompt: expected `blockInternet -> true` with no warnings (the `VeyonIG_*`
+   rules exist between step 2 and 3, then the test removes them itself). From
+   a normal prompt it verifies the graceful-failure path instead
+   (`blockInternet -> false`, one `0x80070005` warning per rule, no crash).
+
+5. **Runtime check in Veyon**:
    - Install the plugin (§9) on a student PC and on the teacher PC.
    - Restart Veyon Master and Veyon Server.
    - The **Block Internet** button must appear in the Master toolbar.
@@ -285,8 +299,9 @@ Veyon API and `netsh`). Verification is functional:
 
 ## 8. Known limitations
 
-- **Windows only.** Blocking uses `netsh advfirewall` (a Windows command), so
-  the student computers must run Windows.
+- **Windows only.** Blocking uses the Windows Firewall API (`INetFwPolicy2`),
+  so the student computers must run Windows. On other platforms the plugin
+  compiles but blocking is a no-op that logs a warning.
 - **ABI / Qt-version compatibility.** The DLL must match the installed Veyon's
   core and Qt (see §2). Use g++ 7.3 (Qt 5.12 toolchain) for the Qt5 build; for the
   Qt6 build use **Qt 6.7 + MinGW 13.1.0** against the 4.9.0 core — that one file
@@ -323,7 +338,8 @@ Alternatively, copy the DLL manually into `<Veyon folder>\plugins\`.
 ```
 InternetGuard/
 ├─ InternetGuardPlugin.h          Plugin declaration (PluginInterface + FeatureProviderInterface)
-├─ InternetGuardPlugin.cpp        Logic: Master side (sending commands) and Server side (netsh rules)
+├─ InternetGuardPlugin.cpp        Logic: Master side (sending commands) and Server side (firewall calls)
+├─ WindowsFirewall.h/.cpp         Windows Firewall backend (INetFwPolicy2 COM API, Windows-only)
 ├─ VeyonCompat.h                  Single point of contact with the Veyon API + version macros
 ├─ CMakeLists.txt                 Multi-version build (WITH_QT6, VEYON_* flags)
 ├─ resources.qrc                  Embeds the toolbar icon (PNG)
@@ -338,6 +354,9 @@ InternetGuard/
 │  ├─ installer.rc                Resources: manifest + both embedded plugin DLLs (Qt5 + Qt6)
 │  ├─ installer.manifest          UAC manifest (asInvoker) + common controls
 │  └─ build-installer.ps1         Installer build script (embeds both Qt variants)
+├─ tools/
+│  ├─ fw_test.cpp                 Standalone manual test of the firewall backend (no Qt/Veyon at runtime)
+│  └─ qtshim/QtGlobal             qWarning→stderr shim so fw_test compiles without Qt
 ├─ build-qt5/                     Qt 5 build output (internet-guard-qt5.dll)
 └─ build-qt6/                     Qt 6 build output (internet-guard-qt6.dll)
 ```
@@ -375,9 +394,9 @@ The repository also redistributes `libveyon-core.dll.a`, `veyon-core.def`,
 Plugin lato insegnante per [Veyon](https://veyon.io/) che aggiunge un pulsante
 alla toolbar della console **Veyon Master**. Quando l'insegnante attiva la
 funzione, ogni **Veyon Server** sui computer degli studenti aggiunge alcune
-regole del Firewall di Windows (tramite `netsh advfirewall`) che bloccano il
-traffico Internet in uscita, lasciando però funzionare la rete locale (LAN).
-Disattivando la funzione le regole vengono rimosse.
+regole del Firewall di Windows (tramite l'API COM nativa del firewall,
+`INetFwPolicy2`) che bloccano il traffico Internet in uscita, lasciando però
+funzionare Veyon stesso. Disattivando la funzione le regole vengono rimosse.
 
 ## ⬇️ Download (versione compilata)
 
@@ -423,12 +442,17 @@ Non serve compilare nulla: scarica i file già pronti dalla release
 | `VeyonIG_BlockDoT_TCP`   | TCP 853                       | DNS over TLS                |
 | `VeyonIG_BlockDoT_UDP`   | UDP 853                       | DNS over TLS                |
 | `VeyonIG_BlockProxy`     | TCP 8080, 8443, 3128          | Proxy / HTTP alternativi    |
-| `VeyonIG_AllowLAN`       | qualsiasi → `localsubnet`     | Mantiene attiva la LAN      |
 
-La regola `VeyonIG_AllowLAN` consente tutto il traffico verso la sottorete
-locale: Windows Firewall preferisce la regola più specifica (`remoteip`), quindi
-Veyon e le risorse di rete locali continuano a funzionare anche con Internet
-bloccato. `blockInternet()` rimuove sempre le regole esistenti prima di
+Le regole vengono create tramite l'API COM del Firewall di Windows
+(`INetFwPolicy2` / `INetFwRule`) — le stesse regole persistenti che creerebbe
+`netsh`, ma senza processi esterni, senza output dipendente dalla lingua e con
+segnalazione precisa degli errori. Le porte bloccate valgono **anche verso la
+sottorete locale**: Windows Firewall dà alle regole di blocco la precedenza su
+quelle di consenso, quindi un'esenzione per la LAN non può funzionare — e
+lascerebbe comunque i proxy interni come via di fuga. Le porte usate da Veyon
+non vengono toccate, quindi la comunicazione insegnante–studente, le condivisioni
+di file e la stampa continuano a funzionare con Internet bloccato.
+`blockInternet()` rimuove sempre le regole esistenti prima di
 ricrearle, per evitare duplicati.
 
 ---
@@ -615,7 +639,7 @@ senza dipendenze da Qt.
 ## 7. Esecuzione dei test
 
 Il plugin non ha una suite di unit test automatici (è un sottile adattatore tra
-l'API di Veyon e `netsh`). La verifica è funzionale:
+l'API di Veyon e l'API del Firewall di Windows). La verifica è funzionale:
 
 1. **Verifica di compilazione (Qt 5)** — controllo della DLL prodotta:
 
@@ -646,7 +670,16 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
    # atteso: $t\plugins\internet-guard-qt6.dll (la variante corrispondente al Qt rilevato)
    ```
 
-4. **Verifica a runtime in Veyon**:
+4. **Verifica del backend firewall (autonoma)** — `tools/fw_test.cpp` esercita
+   la creazione/rimozione reale delle regole senza Veyon (comando di build
+   nell'intestazione del file; l'exe è statico, non serve Qt a runtime).
+   Eseguirlo da un prompt **amministratore**: atteso `blockInternet -> true`
+   senza warning (le regole `VeyonIG_*` esistono tra il passo 2 e il 3, poi il
+   test le rimuove da solo). Da un prompt normale verifica invece il percorso
+   di fallimento pulito (`blockInternet -> false`, un warning `0x80070005` per
+   regola, nessun crash).
+
+5. **Verifica a runtime in Veyon**:
    - Installare il plugin (§ 9) su un PC studente e sul PC insegnante.
    - Riavviare Veyon Master e Veyon Server.
    - Nella toolbar di Master deve comparire il pulsante **Blocca Internet**.
@@ -659,8 +692,10 @@ l'API di Veyon e `netsh`). La verifica è funzionale:
 
 ## 8. Limitazioni note
 
-- **Funziona solo su Windows.** Il blocco usa `netsh advfirewall` (comando di
-  Windows), quindi i computer degli studenti devono avere Windows.
+- **Funziona solo su Windows.** Il blocco usa l'API del Firewall di Windows
+  (`INetFwPolicy2`), quindi i computer degli studenti devono avere Windows. Su
+  altre piattaforme il plugin compila, ma il blocco è un no-op che registra un
+  avviso nel log.
 - **Compatibilità ABI / versione di Qt.** La DLL deve corrispondere al core e al Qt
   del Veyon installato (vedi § 2). Usare g++ 7.3 (toolchain Qt 5.12) per la build
   Qt 5; per la build Qt 6 usare **Qt 6.7 + MinGW 13.1.0** contro il core 4.9.0 —
@@ -698,7 +733,8 @@ In alternativa, copiare manualmente la DLL in `<cartella di Veyon>\plugins\`.
 ```
 InternetGuard/
 ├─ InternetGuardPlugin.h          Dichiarazione del plugin (PluginInterface + FeatureProviderInterface)
-├─ InternetGuardPlugin.cpp        Logica: lato Master (invio comandi) e lato Server (regole netsh)
+├─ InternetGuardPlugin.cpp        Logica: lato Master (invio comandi) e lato Server (chiamate firewall)
+├─ WindowsFirewall.h/.cpp         Backend Firewall di Windows (API COM INetFwPolicy2, solo Windows)
 ├─ VeyonCompat.h                  Punto unico di contatto con l'API Veyon + macro di versione
 ├─ CMakeLists.txt                 Build multi-versione (flag WITH_QT6, VEYON_*)
 ├─ resources.qrc                  Incorpora l'icona della toolbar (PNG)
@@ -713,6 +749,9 @@ InternetGuard/
 │  ├─ installer.rc                Risorse: manifest + entrambe le DLL del plugin incorporate (Qt5 + Qt6)
 │  ├─ installer.manifest          Manifest UAC (asInvoker) + common controls
 │  └─ build-installer.ps1         Script di build dell'installer (incorpora entrambe le varianti Qt)
+├─ tools/
+│  ├─ fw_test.cpp                 Test manuale autonomo del backend firewall (senza Qt/Veyon a runtime)
+│  └─ qtshim/QtGlobal             Shim qWarning→stderr per compilare fw_test senza Qt
 ├─ build-qt5/                     Output della build Qt 5 (internet-guard-qt5.dll)
 └─ build-qt6/                     Output della build Qt 6 (internet-guard-qt6.dll)
 ```

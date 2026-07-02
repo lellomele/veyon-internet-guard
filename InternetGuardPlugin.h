@@ -7,10 +7,9 @@
 
 #pragma once
 
-#include <QList>
 #include "VeyonCompat.h"
 
-class InternetGuardPlugin : public QObject, FeatureProviderInterface, PluginInterface
+class InternetGuardPlugin : public QObject, public FeatureProviderInterface, public PluginInterface
 {
 	Q_OBJECT
 	Q_PLUGIN_METADATA(IID "io.veyon.Veyon.Plugins.InternetGuard")
@@ -26,7 +25,7 @@ public:
 
 	QVersionNumber version() const override
 	{
-		return QVersionNumber(1, 1);
+		return QVersionNumber(1, 2);
 	}
 
 	QString name() const override
@@ -73,8 +72,8 @@ private:
 	bool isOwnFeature(Feature::Uid featureUid) const;
 
 	// --- server-side actions (run on the student computer) ---
-	static void ensureFirewallEnabled();              // point 4: rules are useless if the firewall is off
-	static void runNetshBatch(const QList<QStringList>& batch);
+	// Thin logging wrappers around the WindowsFirewall backend (no-ops with a
+	// warning on non-Windows platforms).
 	static void blockInternet();
 	static void allowInternet();
 

@@ -1,0 +1,15 @@
+// Minimal QtGlobal stand-in so tools/fw_test.cpp can compile
+// WindowsFirewall.cpp without Qt: the backend only needs the
+// printf-style qWarning(), mapped here to stderr.
+#pragma once
+#include <cstdio>
+#include <cstdarg>
+
+inline void qWarning(const char* fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	std::vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	std::fputc('\n', stderr);
+}

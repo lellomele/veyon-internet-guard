@@ -108,6 +108,17 @@ add_library(internet-guard SHARED
     resources.qrc
 )
 
+# The firewall backend talks to the Windows Firewall COM API (INetFwPolicy2),
+# so it is compiled and linked (ole32/oleaut32) on Windows only; elsewhere the
+# plugin builds as a no-op that just logs a warning.
+if(WIN32)
+    target_sources(internet-guard PRIVATE
+        WindowsFirewall.cpp
+        WindowsFirewall.h
+    )
+    target_link_libraries(internet-guard PRIVATE ole32 oleaut32)
+endif()
+
 target_include_directories(internet-guard PRIVATE
     "${VEYON_SOURCE_DIR}/core/src"
 )

@@ -5,7 +5,7 @@ Technical/architecture summary for contributors. User-facing documentation
 
 ## What this is
 
-A [Veyon](https://veyon.io/) teacher-side plugin that adds a "Block / Allow Internet" toggle to the Veyon Master UI. When the teacher activates the feature, the Veyon Server running on each student machine adds Windows Firewall rules (via `netsh advfirewall`) that block outbound internet traffic while keeping the local subnet (LAN) reachable. Deactivating removes those rules.
+A [Veyon](https://veyon.io/) teacher-side plugin that adds a "Block / Allow Internet" toggle to the Veyon Master UI. When the teacher activates the feature, the Veyon Server running on each student machine adds Windows Firewall rules (via the native firewall COM API, `INetFwPolicy2`) that block outbound internet traffic while Veyon itself keeps working. Deactivating removes those rules.
 
 ## Version compatibility (important)
 
@@ -121,7 +121,9 @@ The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-gua
 
 - **`InternetGuardPlugin.h/.cpp`** — the entire plugin logic. Inherits from both `FeatureProviderInterface` and `PluginInterface`. Two roles depending on which side of Veyon loads it:
   - **Master side** (`controlFeature`): on `Operation::Start`/`Stop` sends a `BlockInternetCommand` / `AllowInternetCommand` `FeatureMessage` to the targeted computers via `sendFeatureMessage`.
-  - **Server side** (`handleFeatureMessage`): receives the message and calls `blockInternet()` / `allowInternet()`. These run `netsh` via `runNetshBatch()`, which launches all commands as parallel `QProcess` instances and then waits — total wall time ≈ max(individual) instead of sum. `blockInternet()` first calls `ensureFirewallEnabled()` (`netsh advfirewall set allprofiles state on`) because block rules have no effect while a profile is off — the typical cause of a single client not being blocked. The destructor calls `allowInternet()` so stale rules are never left on unload.
+  - **Server side** (`handleFeatureMessage`): receives the message and calls `blockInternet()` / `allowInternet()` — thin `Q_OS_WIN`-guarded wrappers around the **`WindowsFirewall`** backend (no-ops with a warning elsewhere). The destructor calls `allowInternet()` so stale rules are never left on unload.
+
+- **`WindowsFirewall.h/.cpp`** — the firewall backend (compiled on Windows only, see `CMakeLists.txt`). Talks to the Windows Firewall through the **`INetFwPolicy2` / `INetFwRule` COM API** instead of spawning `netsh`: no external process on PATH (the Server runs as SYSTEM — PATH lookup was a hijacking risk), no locale-dependent output, no process timeouts, per-call `HRESULT` logging, and removing absent rules is silent (with `netsh`, every `delete rule` on a missing rule produced a spurious warning). The GUIDs of the firewall COM objects are defined locally so no uuid import library is needed and both MinGW toolchains link identically. `blockInternet()` first removes leftovers (idempotence), then enables all firewall profiles — block rules have no effect while a profile is off, the typical cause of a single client not being blocked — then adds the block rules; `put_Protocol` must be called **before** `put_RemotePorts` or the latter fails. Rule names are not unique, so removal probes with `Item()` and loops (`Remove()` reports success even when nothing matched).
 
   **Features exposed** (`featureList()`): a `Mode` toggle (`Block/Allow Internet`, toolbar) plus two `Action` sub-features (`Block Internet` / `Allow Internet`) whose `parentUid` is the toggle. The toggle gives a one-click global block/allow; the sub-features appear in the toolbar dropdown and the right-click context menu and act on **exactly the selected computers** — Veyon already passes the selection to `controlFeature`, but a `Mode` toggle tracks a single global state, so explicit per-selection `Action` features are what make independent per-client control reliable. All commands are dispatched by command code in `handleFeatureMessage`, independent of which feature UID carried them.
 
@@ -131,9 +133,11 @@ The plugin is a single shared library (`internet-guard-qt5.dll` or `internet-gua
 
 - **`installer/`** — standalone native Win32 installer (`installer.cpp`, `installer.rc`, `installer.manifest`, `build-installer.ps1`). Statically linked, no Qt dependency; embeds **both** plugin DLLs (Qt5 + Qt6) as RCDATA resources. It suggests the Veyon folder (registry/Program Files), lets the user pick it, **detects whether that Veyon uses Qt 5 or Qt 6** (`Qt5Core.dll`/`Qt6Core.dll`) and installs the matching variant, **reads the Veyon version** (from the bundled executables, falling back to `veyon-core.dll`) and warns — without blocking — if it is below 4.7.5 or unreadable, copies the DLL into `…\plugins\` (removing the other-Qt variant), uses modern `TaskDialog` dialogs, reports permission errors, and self-elevates (UAC `runas`) on access-denied. Build with `pwsh -File installer\build-installer.ps1 -PluginDllQt5 build-qt5\internet-guard-qt5.dll -PluginDllQt6 build-qt6\internet-guard-qt6.dll`.
 
+- **`tools/fw_test.cpp`** — standalone manual test of the `WindowsFirewall` backend (`tools/qtshim/QtGlobal` maps `qWarning` to stderr so it builds without Qt; static exe, no runtime dependencies). Run elevated to exercise real rule creation/removal; unelevated it verifies the graceful-failure path. Build command in the file header.
+
 ### Firewall rule names
 
-All rules use the prefix `VeyonIG_` so they can be reliably deleted. `blockInternet()` always calls `allowInternet()` first to avoid duplicate accumulation.
+All rules use the prefix `VeyonIG_` so they can be reliably deleted. `blockInternet()` always removes existing rules first to avoid duplicate accumulation. All rules are outbound, all profiles, IPv4+IPv6 (no remote-address filter).
 
 | Rule constant | Port / Protocol | Purpose |
 |---|---|---|
@@ -145,7 +149,8 @@ All rules use the prefix `VeyonIG_` so they can be reliably deleted. `blockInter
 | `VeyonIG_BlockDoT_TCP` | TCP 853 | DNS over TLS |
 | `VeyonIG_BlockDoT_UDP` | UDP 853 | DNS over TLS |
 | `VeyonIG_BlockProxy` | TCP 8080,8443,3128 | Proxy / alternate HTTP |
-| `VeyonIG_AllowLAN` | any → `localsubnet` | Keeps the LAN reachable (more-specific `remoteip` rule wins) |
+
+**No LAN exemption — by design (don't re-add it).** Plugin ≤ 1.1 shipped a `VeyonIG_AllowLAN` rule (`allow any → localsubnet`) meant to keep LAN web servers reachable. It never worked: Windows Firewall gives **Block rules precedence over Allow rules**, so an allow rule cannot punch through port blocks. Scoping the block rules to public IP ranges instead was considered and rejected: it would leave an internal proxy (LAN address, port 8080/3128) as an internet escape route. The blocked ports therefore apply to the LAN too; Veyon's own ports, file sharing and printing are unaffected. `allowInternet()` still deletes the legacy `VeyonIG_AllowLAN` name to clean up upgrades from ≤ 1.1.
 
 ### Plugin identity
 
