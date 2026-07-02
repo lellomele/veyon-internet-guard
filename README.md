@@ -12,7 +12,7 @@ rules.
 ## ⬇️ Download (pre-built)
 
 No need to compile anything: grab the ready-made files from
-**[v1.1.5](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.5)**
+**[v1.2.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.2.0)**
 (Windows only — after installing, restart Veyon Master and Veyon Server).
 
 > The **installer auto-detects** whether your Veyon uses Qt 5 or Qt 6 and copies
@@ -23,9 +23,9 @@ No need to compile anything: grab the ready-made files from
 
 | File | Veyon | What it is |
 |------|-------|------------|
-| **[install-internet-guard.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/install-internet-guard.exe)** | 4.7.5 – 4.10.x (Qt 5 & Qt 6) | **Recommended.** Single installer: detects Qt 5/6 automatically, picks the Veyon folder, copies the right plugin, self-elevates if needed. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/internet-guard-qt6.dll)** | 4.9.0 – 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/internet-guard-qt5.dll)** | 4.7.5 – 4.8.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[install-internet-guard.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/install-internet-guard.exe)** | 4.7.5 – 4.10.x (Qt 5 & Qt 6) | **Recommended.** Single installer: detects Qt 5/6 automatically, picks the Veyon folder, copies the right plugin, self-elevates if needed. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/internet-guard-qt6.dll)** | 4.9.0 – 4.10.x (Qt 6) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/internet-guard-qt5.dll)** | 4.7.5 – 4.8.x (Qt 5) | DLL only — copy manually into `<Veyon folder>\plugins\`. |
 
 ---
 
@@ -401,7 +401,7 @@ funzionare Veyon stesso. Disattivando la funzione le regole vengono rimosse.
 ## ⬇️ Download (versione compilata)
 
 Non serve compilare nulla: scarica i file già pronti dalla release
-**[v1.1.5](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.1.5)**
+**[v1.2.0](https://github.com/lellomele/veyon-internet-guard/releases/tag/v1.2.0)**
 (solo Windows — dopo l'installazione riavviare Veyon Master e Veyon Server).
 
 > L'**installer rileva automaticamente** se il tuo Veyon usa Qt 5 o Qt 6 e copia
@@ -412,9 +412,9 @@ Non serve compilare nulla: scarica i file già pronti dalla release
 
 | File | Veyon | A cosa serve |
 |------|-------|--------------|
-| **[install-internet-guard.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/install-internet-guard.exe)** | 4.7.5 – 4.10.x (Qt 5 e Qt 6) | **Consigliato.** Installer unico: rileva automaticamente Qt 5/6, seleziona la cartella di Veyon, copia il plugin giusto, con auto-elevazione se necessario. |
-| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/internet-guard-qt6.dll)** | 4.9.0 – 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
-| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.1.5/internet-guard-qt5.dll)** | 4.7.5 – 4.8.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[install-internet-guard.exe](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/install-internet-guard.exe)** | 4.7.5 – 4.10.x (Qt 5 e Qt 6) | **Consigliato.** Installer unico: rileva automaticamente Qt 5/6, seleziona la cartella di Veyon, copia il plugin giusto, con auto-elevazione se necessario. |
+| **[internet-guard-qt6.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/internet-guard-qt6.dll)** | 4.9.0 – 4.10.x (Qt 6) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
+| **[internet-guard-qt5.dll](https://github.com/lellomele/veyon-internet-guard/releases/download/v1.2.0/internet-guard-qt5.dll)** | 4.7.5 – 4.8.x (Qt 5) | Solo la DLL — da copiare manualmente in `<cartella Veyon>\plugins\`. |
 
 ---
 
