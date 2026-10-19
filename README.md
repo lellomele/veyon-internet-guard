@@ -2,6 +2,16 @@
 
 **English** | [Italiano](#italiano)
 
+> **Development discontinued by the author.** InternetGuard remains functional
+> with the compatible Veyon versions listed below, but its author will not develop
+> this plugin further. It has been superseded by the work on
+> **[NetLink Teacher Control](https://github.com/lellomele/NetLink-Teacher-Control)**,
+> where future development is focused. The existing source code and releases
+> remain available.
+>
+> NetLink Teacher Control is a separate suite, currently a pre-release, not a
+> drop-in plugin update for an existing Veyon installation.
+
 Teacher-side plugin for [Veyon](https://veyon.io/) that adds a button to the
 **Veyon Master** console toolbar. When the teacher activates the feature, every
 **Veyon Server** on the student computers adds a few Windows Firewall rules
@@ -390,6 +400,17 @@ The repository also redistributes `libveyon-core.dll.a`, `veyon-core.def`,
 # InternetGuard — plugin Veyon "Blocca / Consenti Internet"
 
 [English](#internetguard--veyon-block--allow-internet-plugin) | **Italiano**
+
+> **Sviluppo interrotto dall'autore.** InternetGuard resta funzionante con le
+> versioni compatibili di Veyon indicate sotto, ma l'autore non proseguirà lo
+> sviluppo di questo plugin, ormai superato dagli sviluppi di
+> **[NetLink Teacher Control](https://github.com/lellomele/NetLink-Teacher-Control)**,
+> sul quale si concentrerà lo sviluppo futuro. Il codice sorgente e le release
+> esistenti restano disponibili.
+>
+> NetLink Teacher Control è una suite separata, attualmente in versione
+> preliminare, non un aggiornamento del plugin da copiare in un'installazione
+> Veyon esistente.
 
 Plugin lato insegnante per [Veyon](https://veyon.io/) che aggiunge un pulsante
 alla toolbar della console **Veyon Master**. Quando l'insegnante attiva la
