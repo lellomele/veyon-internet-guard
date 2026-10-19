@@ -108,7 +108,7 @@ non sono oggetto delle regole.
 
 Servono CMake 3.16+, Qt/MinGW compatibili, header Veyon e import library del core
 corrispondente. La build Qt 5 punta al core 4.7.5; quella Qt 6 distribuita usa
-Qt 6.7 e core 4.9.0. Dettagli e verifiche: [ARCHITECTURE.md](ARCHITECTURE.md).
+Qt 6.7 e core 4.9.0. Dettagli e verifiche: [ARCHITECTURE.it.md](ARCHITECTURE.it.md).
 
 Copyright © 2025-26 prof. Ing. Raffaele Mele — GPL-2.0-or-later, [LICENSE](LICENSE).
 Le import library e gli elenchi di simboli derivati da Veyon conservano

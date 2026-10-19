@@ -1,5 +1,7 @@
 # InternetGuard: architecture and build
 
+[English](ARCHITECTURE.md) · [Italiano](ARCHITECTURE.it.md)
+
 User-facing features, installation and maintenance status: [README](README.md).
 
 ## Components and command flow
